@@ -1,0 +1,7 @@
+!.gitignore
+*.o
+*.a
+*.elf
+*.bin
+*.rom
+
