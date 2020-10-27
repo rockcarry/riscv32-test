@@ -1,26 +1,36 @@
+#include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 
-static int sample_putc(char c, FILE *file)
-{
-    (void) file;
-    return c;
-}
-
-static int sample_getc(FILE *file)
-{
-    unsigned char c = -1;
-    (void) file;
-    return c;
-}
+static int sample_putc(char c, FILE *file);
+static int sample_getc(FILE *file);
 
 static FILE __stdin  = FDEV_SETUP_STREAM(NULL, sample_getc, NULL, _FDEV_SETUP_READ );
 static FILE __stdout = FDEV_SETUP_STREAM(sample_putc, NULL, NULL, _FDEV_SETUP_WRITE);
 static FILE __stderr = FDEV_SETUP_STREAM(sample_putc, NULL, NULL, _FDEV_SETUP_WRITE);
 FILE *const __iob[3] = { &__stdin, &__stdout, &__stderr };
+
+static int sample_putc(char c, FILE *file)
+{
+    if (file == &__stdout) {
+        *(volatile uint32_t*)0x20000004 = c;
+    } else if (file == &__stderr) {
+        *(volatile uint32_t*)0x20000008 = c;
+    }
+    return c;
+}
+
+static int sample_getc(FILE *file)
+{
+    int c = -1;
+    if (file == &__stdin) {
+        c = *(volatile uint32_t*)0x2000000;
+    }
+    return c;
+}
 
 int open(const char *file, int flags, ...)
 {
