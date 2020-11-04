@@ -1,4 +1,3 @@
-#include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -8,9 +7,9 @@
 static int sample_putc(char c, FILE *file);
 static int sample_getc(FILE *file);
 
-static FILE __stdin  = FDEV_SETUP_STREAM(NULL, sample_getc, NULL, _FDEV_SETUP_READ );
-static FILE __stdout = FDEV_SETUP_STREAM(sample_putc, NULL, NULL, _FDEV_SETUP_WRITE);
-static FILE __stderr = FDEV_SETUP_STREAM(sample_putc, NULL, NULL, _FDEV_SETUP_WRITE);
+static FILE __stdin  = FDEV_SETUP_STREAM(sample_putc, sample_getc, NULL, _FDEV_SETUP_READ );
+static FILE __stdout = FDEV_SETUP_STREAM(sample_putc, sample_getc, NULL, _FDEV_SETUP_WRITE);
+static FILE __stderr = FDEV_SETUP_STREAM(sample_putc, sample_getc, NULL, _FDEV_SETUP_WRITE);
 FILE *const __iob[3] = { &__stdin, &__stdout, &__stderr };
 
 static int sample_putc(char c, FILE *file)
