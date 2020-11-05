@@ -86,6 +86,8 @@ int unlink(const char *pathname)
 void _ATTRIBUTE ((__noreturn__)) _exit(int code)
 {
     (void) code;
+    __asm__("li x17, 93");
+    __asm__("ecall");
     while (1);
 }
 
