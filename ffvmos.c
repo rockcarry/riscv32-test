@@ -15,9 +15,9 @@ FILE *const __iob[3] = { &__stdin, &__stdout, &__stderr };
 static int sample_putc(char c, FILE *file)
 {
     if (file == &__stdout) {
-        *(volatile uint32_t*)0xF0000004 = c;
-    } else if (file == &__stderr) {
         *(volatile uint32_t*)0xF0000008 = c;
+    } else if (file == &__stderr) {
+        *(volatile uint32_t*)0xF000000C = c;
     }
     return c;
 }
@@ -30,6 +30,8 @@ static int sample_getc(FILE *file)
     }
     return c;
 }
+
+int getch(void) { return *(volatile uint32_t*)0xF0000004; }
 
 int open(const char *file, int flags, ...)
 {
