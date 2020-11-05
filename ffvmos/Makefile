@@ -4,10 +4,8 @@ GXX           ?= $(CROSS_COMPILE)g++
 OBJCOPY       ?= $(CROSS_COMPILE)objcopy
 
 C_FLAGS := -Wall -Os --sysroot=$(PICOLIBC_DIR) --specs=$(PICOLIBC_DIR)/picolibc.specs
-LDFLAGS := --sysroot=$(PICOLIBC_DIR) --specs=$(PICOLIBC_DIR)/picolibc.specs -Thello.ld
 
-PROGS = hello.elf
-PROMS = hello.rom
+PROGS = libffvmos.a
 
 COMP_C_SRCS=$(wildcard ./*.c)
 COMP_C_SRCS_NO_DIR=$(notdir $(COMP_C_SRCS))
@@ -18,29 +16,25 @@ COMP_CPP_SRCS_NO_DIR=$(notdir $(COMP_CPP_SRCS))
 CXXOBJS=$(patsubst %.cpp, %.cpp.o, $(COMP_CPP_SRCS_NO_DIR))
 
 OBJDIR ?= $(shell pwd)/obj
-BINDIR ?= $(shell pwd)/bin
+LIBDIR ?= $(shell pwd)/lib
 INCDIR ?= $(shell pwd)/inc
 
-BINPROG = $(addprefix $(BINDIR)/, $(PROGS))
-BINPROM = $(addprefix $(BINDIR)/, $(PROMS))
+OBJPROG = $(addprefix $(OBJDIR)/, $(PROGS))
 
 .PHONY: clean
 
-all: $(BINPROG) $(BINPROM)
+all: $(OBJPROG)
 
 clean:
 	@rm -Rf $(OBJDIR)
-	@rm -Rf $(BINDIR)
+	@rm -Rf $(LIBDIR)
 
-$(BINPROM) : $(BINPROG)
-	@mkdir -p $(BINDIR)
-	@echo "  ROM $@"
-	$(OBJCOPY) -O binary $< $@
-
-$(BINPROG) : $(addprefix $(OBJDIR)/, $(OBJECTS)) $(addprefix $(OBJDIR)/, $(CXXOBJS))
-	@mkdir -p $(BINDIR)
-	@echo "  ELF $@"
-	$(GCC) -o $@ $(addprefix $(OBJDIR)/, $(OBJECTS)) $(addprefix $(OBJDIR)/, $(CXXOBJS)) $(LDFLAGS)
+$(OBJPROG) : $(addprefix $(OBJDIR)/, $(OBJECTS)) $(addprefix $(OBJDIR)/, $(CXXOBJS))
+	@mkdir -p $(LIBDIR)
+	@echo "  LIBDIR $@"
+	@$(AR) rcs $@ $(OBJDIR)/*.o
+	@echo ""
+	mv -f ${OBJDIR}/$(PROGS) ${LIBDIR}
 
 $(OBJDIR)/%.c.o : %.c
 	@mkdir -p obj
