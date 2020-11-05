@@ -26,7 +26,7 @@ static int sample_getc(FILE *file)
 {
     int c = -1;
     if (file == &__stdin) {
-        c = *(volatile uint32_t*)0xF000000;
+        c = *(volatile uint32_t*)0xF0000000;
     }
     return c;
 }
