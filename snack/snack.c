@@ -1,8 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-
-extern int getch(void);
+#include "libffvm.h"
 
 static void snack_feed(char *board, int bw, int bh, int ssize) {
     int rf = rand() % ((bw - 2) * (bh - 2) - ssize), i;

@@ -1,7 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
-
-extern int getch(void);
+#include "libffvm.h"
 
 #define GAME_SIZE  4
 

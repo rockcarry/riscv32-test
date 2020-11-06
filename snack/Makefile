@@ -6,6 +6,8 @@ OBJCOPY       ?= $(CROSS_COMPILE)objcopy
 LIBFFVM_TOP = $(shell pwd)/../libffvm
 
 C_FLAGS := -Wall -Os --sysroot=$(PICOLIBC_DIR) --specs=$(PICOLIBC_DIR)/picolibc.specs
+C_FLAGS += -I$(LIBFFVM_TOP)
+
 LDFLAGS := --sysroot=$(PICOLIBC_DIR) --specs=$(PICOLIBC_DIR)/picolibc.specs
 LDFLAGS += -L$(LIBFFVM_TOP)/lib -lffvm -T$(LIBFFVM_TOP)/ffvm.ld
 
