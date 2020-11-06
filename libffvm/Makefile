@@ -5,7 +5,7 @@ OBJCOPY       ?= $(CROSS_COMPILE)objcopy
 
 C_FLAGS := -Wall -Os --sysroot=$(PICOLIBC_DIR) --specs=$(PICOLIBC_DIR)/picolibc.specs
 
-PROGS = libffvmos.a
+PROGS = libffvm.a
 
 COMP_C_SRCS=$(wildcard ./*.c)
 COMP_C_SRCS_NO_DIR=$(notdir $(COMP_C_SRCS))

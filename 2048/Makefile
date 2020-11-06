@@ -3,11 +3,11 @@ GCC           ?= $(CROSS_COMPILE)gcc
 GXX           ?= $(CROSS_COMPILE)g++
 OBJCOPY       ?= $(CROSS_COMPILE)objcopy
 
-FFVMOS_TOP = $(shell pwd)/../ffvmos
+LIBFFVM_TOP = $(shell pwd)/../libffvm
 
 C_FLAGS := -Wall -Os --sysroot=$(PICOLIBC_DIR) --specs=$(PICOLIBC_DIR)/picolibc.specs
 LDFLAGS := --sysroot=$(PICOLIBC_DIR) --specs=$(PICOLIBC_DIR)/picolibc.specs
-LDFLAGS += -L$(FFVMOS_TOP)/lib -lffvmos -T$(FFVMOS_TOP)/ffvmos.ld
+LDFLAGS += -L$(LIBFFVM_TOP)/lib -lffvm -T$(LIBFFVM_TOP)/ffvm.ld
 
 PROGS = 2048.elf
 PROMS = 2048.rom
