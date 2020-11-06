@@ -5,11 +5,12 @@
 #include <sys/stat.h>
 #include "ffvmreg.h"
 
-static int sample_putc(char c, FILE *file);
-static int sample_getc(FILE *file);
+static int sample_putc (char c, FILE *file);
+static int sample_getc (FILE *file);
+static int sample_flush(FILE *file);
 
-static FILE __stdio  = FDEV_SETUP_STREAM(sample_putc, sample_getc, NULL, _FDEV_SETUP_RW   );
-static FILE __stderr = FDEV_SETUP_STREAM(sample_putc, sample_getc, NULL, _FDEV_SETUP_WRITE);
+static FILE __stdio  = FDEV_SETUP_STREAM(sample_putc, sample_getc, sample_flush, _FDEV_SETUP_RW   );
+static FILE __stderr = FDEV_SETUP_STREAM(sample_putc, sample_getc, sample_flush, _FDEV_SETUP_WRITE);
 FILE *const __iob[3] = { &__stdio, &__stdio, &__stderr };
 
 static int sample_putc(char c, FILE *file)
@@ -31,8 +32,20 @@ static int sample_getc(FILE *file)
     return c;
 }
 
-int getch(void) { return *REG_FFVM_GETCH; }
-int kbhit(void) { return *REG_FFVM_KBHIT; }
+static int sample_flush(FILE *file)
+{
+    if (file == &__stdio) {
+        *REG_FFVM_STDIO = -1;
+    } else if (file == &__stderr) {
+        *REG_FFVM_STDERR= -1;
+    }
+    return 0;
+}
+
+int  getch (void)  { return *REG_FFVM_GETCH; }
+int  kbhit (void)  { return *REG_FFVM_KBHIT; }
+void clrscr(void)  { *REG_FFVM_CLRSCR = 0  ; }
+void msleep(int ms){ *REG_FFVM_MSLEEP = ms ; }
 
 int open(const char *file, int flags, ...)
 {
