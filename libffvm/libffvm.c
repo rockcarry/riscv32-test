@@ -3,21 +3,21 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include "ffvmreg.h"
 
 static int sample_putc(char c, FILE *file);
 static int sample_getc(FILE *file);
 
-static FILE __stdin  = FDEV_SETUP_STREAM(sample_putc, sample_getc, NULL, _FDEV_SETUP_READ );
-static FILE __stdout = FDEV_SETUP_STREAM(sample_putc, sample_getc, NULL, _FDEV_SETUP_WRITE);
+static FILE __stdio  = FDEV_SETUP_STREAM(sample_putc, sample_getc, NULL, _FDEV_SETUP_RW   );
 static FILE __stderr = FDEV_SETUP_STREAM(sample_putc, sample_getc, NULL, _FDEV_SETUP_WRITE);
-FILE *const __iob[3] = { &__stdin, &__stdout, &__stderr };
+FILE *const __iob[3] = { &__stdio, &__stdio, &__stderr };
 
 static int sample_putc(char c, FILE *file)
 {
-    if (file == &__stdout) {
-        *(volatile uint32_t*)0xF0000008 = c;
+    if (file == &__stdio) {
+        *REG_FFVM_STDIO = c;
     } else if (file == &__stderr) {
-        *(volatile uint32_t*)0xF000000C = c;
+        *REG_FFVM_STDERR= c;
     }
     return c;
 }
@@ -25,13 +25,14 @@ static int sample_putc(char c, FILE *file)
 static int sample_getc(FILE *file)
 {
     int c = -1;
-    if (file == &__stdin) {
-        c = *(volatile uint32_t*)0xF0000000;
+    if (file == &__stdio) {
+        c = *REG_FFVM_STDIO;
     }
     return c;
 }
 
-int getch(void) { return *(volatile uint32_t*)0xF0000004; }
+int getch(void) { return *REG_FFVM_GETCH; }
+int kbhit(void) { return *REG_FFVM_KBHIT; }
 
 int open(const char *file, int flags, ...)
 {
