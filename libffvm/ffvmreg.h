@@ -8,5 +8,6 @@
 
 #define REG_FFVM_MSLEEP ((volatile uint32_t*)0xF0000100)
 #define REG_FFVM_CLRSCR ((volatile uint32_t*)0xF0000104)
+#define REG_FFVM_GOTOXY ((volatile uint32_t*)0xF0000108)
 
 #endif

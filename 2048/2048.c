@@ -104,6 +104,7 @@ static int next(int *data)
 static void output(int *data)
 {
     int i, sum = 0;
+    gotoxy(0, 0);
     printf("+--------------------+\n\n");
     for (i=1; i<=GAME_SIZE*GAME_SIZE; i++) {
         if (0 || data[i-1]) {

@@ -44,8 +44,9 @@ static int sample_flush(FILE *file)
 
 int  getch (void)  { return *REG_FFVM_GETCH; }
 int  kbhit (void)  { return *REG_FFVM_KBHIT; }
-void clrscr(void)  { *REG_FFVM_CLRSCR = 0  ; }
 void msleep(int ms){ *REG_FFVM_MSLEEP = ms ; }
+void clrscr(void)  { *REG_FFVM_CLRSCR = 0  ; }
+void gotoxy(int x, int y) { *REG_FFVM_GOTOXY = (x << 0) | (y << 16); }
 
 int open(const char *file, int flags, ...)
 {

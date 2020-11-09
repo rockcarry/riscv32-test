@@ -18,7 +18,7 @@ static void draw_game(int board[20][10], char curbricks[2], int curx, int cury,
                       char nextbricks[2], int level, int score, int lines, int history, int gameover)
 {
     int  i, j, c;
-    clrscr();
+    gotoxy(0, 0);
     for (i=0; i<20; i++) {
         for (j=0; j<10; j++) {
             c = board[i][j] == 1 ? 'B' : board[i][j] == 2 ? 'x' : '.';

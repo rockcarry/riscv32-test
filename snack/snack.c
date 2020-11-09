@@ -25,10 +25,7 @@ static void snack_init(char *board, int bw, int bh, int *snack, int *shead, int 
 
 static void snack_draw(char *board, int bw, int bh) {
     int i, j;
-#ifdef WIN32
-    COORD coord = {};
-    SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), coord);
-#endif
+    gotoxy(0, 0);
     printf("i-UP, k-DOWN, j-LEFT, l-RIGHT, q-EXIT\n\n");
     for (i=0; i<bh; i++) {
         for (j=0; j<bw; j++) printf("%c ", board[j+i*bw]);
