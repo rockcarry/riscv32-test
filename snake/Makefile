@@ -11,8 +11,8 @@ C_FLAGS += -I$(LIBFFVM_TOP)
 LDFLAGS := --sysroot=$(PICOLIBC_DIR) --specs=$(PICOLIBC_DIR)/picolibc.specs
 LDFLAGS += -L$(LIBFFVM_TOP)/lib -lffvm -T$(LIBFFVM_TOP)/ffvm.ld
 
-PROGS = snack.elf
-PROMS = snack.rom
+PROGS = snake.elf
+PROMS = snake.rom
 
 COMP_C_SRCS=$(wildcard ./*.c)
 COMP_C_SRCS_NO_DIR=$(notdir $(COMP_C_SRCS))
