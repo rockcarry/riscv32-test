@@ -170,5 +170,5 @@ int main(void)
             gameover = check_collision(board, g_all_bricks[type][rot], posx, posy);
         }
     }
-    return 0;
+    exit(0);
 }

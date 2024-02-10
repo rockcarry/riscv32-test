@@ -134,7 +134,7 @@ int main(void)
         case 'k': down (data); break;
         case 'l': right(data); break;
         case 'i': up   (data); break;
-        case 'q': return 0;
+        case 'q': exit(0);
         default : continue;
         }
         ret = next(data);
@@ -143,4 +143,5 @@ int main(void)
         if (ret == -1) printf("game over !\n");
         if (ret ==  1) printf("you  win  !\n");
     }
+    exit(0);
 }
