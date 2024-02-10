@@ -5,42 +5,39 @@
 #include <sys/stat.h>
 #include "ffvmreg.h"
 
-static int sample_putc (char c, FILE *file);
-static int sample_getc (FILE *file);
-static int sample_flush(FILE *file);
-
-static FILE __stdio  = FDEV_SETUP_STREAM(sample_putc, sample_getc, sample_flush, _FDEV_SETUP_RW   );
-static FILE __stderr = FDEV_SETUP_STREAM(sample_putc, sample_getc, sample_flush, _FDEV_SETUP_WRITE);
-FILE *const __iob[3] = { &__stdio, &__stdio, &__stderr };
-
-static int sample_putc(char c, FILE *file)
+static int stdin_getc(FILE *file)
 {
-    if (file == &__stdio) {
-        *REG_FFVM_STDIO = c;
-    } else if (file == &__stderr) {
-        *REG_FFVM_STDERR= c;
-    }
-    return c;
+    return *REG_FFVM_STDIO;
 }
 
-static int sample_getc(FILE *file)
+static int stdout_putc(char c, FILE *file)
 {
-    int c = -1;
-    if (file == &__stdio) {
-        c = *REG_FFVM_STDIO;
-    }
-    return c;
+    return (*REG_FFVM_STDIO = c);
 }
 
-static int sample_flush(FILE *file)
+static int stdout_flush(FILE *file)
 {
-    if (file == &__stdio) {
-        *REG_FFVM_STDIO = -1;
-    } else if (file == &__stderr) {
-        *REG_FFVM_STDERR= -1;
-    }
+    *REG_FFVM_STDIO = -1;
     return 0;
 }
+
+static int stderr_putc(char c, FILE *file)
+{
+    return (*REG_FFVM_STDERR = c);
+}
+
+static int stderr_flush(FILE *file)
+{
+    *REG_FFVM_STDERR = -1;
+    return 0;
+}
+
+static FILE __stdio  = FDEV_SETUP_STREAM(stdout_putc, stdin_getc, stdout_flush, _FDEV_SETUP_RW   );
+static FILE __stderr = FDEV_SETUP_STREAM(stderr_putc, NULL      , stderr_flush, _FDEV_SETUP_WRITE);
+
+FILE *const stdin  = &__stdio;
+FILE *const stdout = &__stdio;
+FILE *const stderr = &__stderr;
 
 int  getch (void)  { return *REG_FFVM_GETCH; }
 int  kbhit (void)  { return *REG_FFVM_KBHIT; }
@@ -68,7 +65,7 @@ int fstat(int fd, struct stat *sbuf)
     return -1;
 }
 
-_READ_WRITE_RETURN_TYPE read(int fd, void *buf, size_t nbyte)
+ssize_t read(int fd, void *buf, size_t nbyte)
 {
     (void) fd;
     (void) buf;
@@ -76,7 +73,7 @@ _READ_WRITE_RETURN_TYPE read(int fd, void *buf, size_t nbyte)
     return -1;
 }
 
-_READ_WRITE_RETURN_TYPE write(int fd, const void *buf, size_t nbyte)
+ssize_t write(int fd, const void *buf, size_t nbyte)
 {
     (void) fd;
     (void) buf;

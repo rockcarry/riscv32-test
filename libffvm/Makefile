@@ -1,9 +1,9 @@
-CROSS_COMPILE ?= riscv32-unknown-elf-
+CROSS_COMPILE ?= riscv32-picolibc-elf-
 GCC           ?= $(CROSS_COMPILE)gcc
 GXX           ?= $(CROSS_COMPILE)g++
 OBJCOPY       ?= $(CROSS_COMPILE)objcopy
 
-C_FLAGS := -Wall -Os --sysroot=$(PICOLIBC_DIR) --specs=$(PICOLIBC_DIR)/picolibc.specs
+C_FLAGS := -Wall -Os
 
 PROGS = libffvm.a
 
@@ -41,7 +41,3 @@ $(OBJDIR)/%.c.o : %.c
 	@echo "  CC  $<"
 	$(GCC) $(C_FLAGS) $(C_INCLUDES) -c $< -o $@
 
-$(OBJDIR)/%.cpp.o : %.cpp
-	@mkdir -p obj
-	@echo "  CC  $<"
-	@$(GXX) $(C_FLAGS) $(C_INCLUDES) -c $< -o $@

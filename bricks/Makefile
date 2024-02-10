@@ -1,15 +1,12 @@
-CROSS_COMPILE ?= riscv32-unknown-elf-
+CROSS_COMPILE ?= riscv32-picolibc-elf-
 GCC           ?= $(CROSS_COMPILE)gcc
 GXX           ?= $(CROSS_COMPILE)g++
 OBJCOPY       ?= $(CROSS_COMPILE)objcopy
 
 LIBFFVM_TOP = $(shell pwd)/../libffvm
 
-C_FLAGS := -Wall -Os --sysroot=$(PICOLIBC_DIR) --specs=$(PICOLIBC_DIR)/picolibc.specs
-C_FLAGS += -I$(LIBFFVM_TOP)
-
-LDFLAGS := --sysroot=$(PICOLIBC_DIR) --specs=$(PICOLIBC_DIR)/picolibc.specs
-LDFLAGS += -L$(LIBFFVM_TOP)/lib -lffvm -T$(LIBFFVM_TOP)/ffvm.ld
+C_FLAGS := -Wall -Os -I$(LIBFFVM_TOP)
+LDFLAGS := -L$(LIBFFVM_TOP)/lib --specs=picolibc.specs --oslib=ffvm -T$(LIBFFVM_TOP)/ffvm.ld
 
 PROGS = bricks.elf
 PROMS = bricks.rom
@@ -52,7 +49,3 @@ $(OBJDIR)/%.c.o : %.c
 	@echo "  CC  $<"
 	$(GCC) $(C_FLAGS) $(C_INCLUDES) -c $< -o $@
 
-$(OBJDIR)/%.cpp.o : %.cpp
-	@mkdir -p obj
-	@echo "  CC  $<"
-	@$(GXX) $(C_FLAGS) $(C_INCLUDES) -c $< -o $@
