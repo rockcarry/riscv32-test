@@ -80,5 +80,5 @@ int main(void) {
         case 'W': reinit = 1; printf("\nyou win !\n\nYou are a clever and great snake !\n\npress any key to try agin ...\n"); break;
         }
     } while ((op = getch()) && op != 'q' && op != 'Q');
-    exit(0);
+    return 0;
 }

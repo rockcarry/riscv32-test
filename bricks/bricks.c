@@ -126,10 +126,10 @@ int main(void)
             draw_game(board, g_all_bricks[type][rot], posx, posy, g_all_bricks[next][nrot], level, score, lines, history, gameover);
             dirty = 0;
         }
-        if (remove) { remove_full_rows(board); remove = 0; msleep(10); }
+        if (remove) { remove_full_rows(board); remove = 0; mdelay(10); }
 
         if (!kbhit()) {
-            msleep(16);
+            mdelay(10);
             if (gameover) continue;
             speed = 60 - 58 * level / 10;
             if (speed < 2) speed = 2;
@@ -170,5 +170,5 @@ int main(void)
             gameover = check_collision(board, g_all_bricks[type][rot], posx, posy);
         }
     }
-    exit(0);
+    return 0;
 }

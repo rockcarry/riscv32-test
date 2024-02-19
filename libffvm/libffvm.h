@@ -3,9 +3,9 @@
 
 int  getch (void);
 int  kbhit (void);
-void msleep(int ms);
 void clrscr(void);
 void gotoxy(int x, int y);
+void mdelay(int ms);
 
 #endif
 

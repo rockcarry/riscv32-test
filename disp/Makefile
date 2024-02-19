@@ -5,11 +5,11 @@ OBJCOPY       ?= $(CROSS_COMPILE)objcopy
 
 LIBFFVM_TOP = $(shell pwd)/../libffvm
 
-C_FLAGS := -Wall -Os -I$(LIBFFVM_TOP)
+C_FLAGS := -Wall -Os -g -I$(LIBFFVM_TOP)
 LDFLAGS := -L$(LIBFFVM_TOP)/lib --specs=picolibc.specs --oslib=ffvm --crt0=hosted -T$(LIBFFVM_TOP)/ffvm.ld
 
-PROGS = snake.elf
-PROMS = snake.rom
+PROGS = disp.elf
+PROMS = disp.rom
 
 COMP_C_SRCS=$(wildcard ./*.c)
 COMP_C_SRCS_NO_DIR=$(notdir $(COMP_C_SRCS))

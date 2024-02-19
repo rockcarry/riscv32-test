@@ -7,7 +7,7 @@ int main(void)
 {
     while (1) {
         printf("tick: %lu, time: %lu\n", *REG_FFVM_TICKTIME, *REG_FFVM_REALTIME);
-        msleep(1000);
+        mdelay(1000);
     }
-    exit(0);
+    return 0;
 }

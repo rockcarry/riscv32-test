@@ -39,11 +39,16 @@ FILE *const stdin  = &__stdio;
 FILE *const stdout = &__stdio;
 FILE *const stderr = &__stderr;
 
-int  getch (void)  { return *REG_FFVM_GETCH; }
-int  kbhit (void)  { return *REG_FFVM_KBHIT; }
-void msleep(int ms){ *REG_FFVM_MSLEEP = ms ; }
-void clrscr(void)  { *REG_FFVM_CLRSCR = 0  ; }
+int  getch (void) { return *REG_FFVM_GETCH; }
+int  kbhit (void) { return *REG_FFVM_KBHIT; }
+void clrscr(void) { *REG_FFVM_CLRSCR = 0;   }
 void gotoxy(int x, int y) { *REG_FFVM_GOTOXY = (x << 0) | (y << 16); }
+
+void mdelay(int ms)
+{
+    uint32_t tick_end = *REG_FFVM_TICKTIME + ms;
+    while ((int32_t)tick_end - (int32_t)*REG_FFVM_TICKTIME > 0);
+}
 
 int open(const char *file, int flags, ...)
 {
