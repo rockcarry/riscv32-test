@@ -6,13 +6,15 @@
 #include "libffvm.h"
 
 #define AUDIO_ADEV_BUFSIZE 8129
-#define AUDIO_SAMPLERATE   16000
+#define AUDIO_SAMPLERATE   8000
 #define AUDIO_CLIP_SIZE    64
 #define AUDIO_START_FREQ   100
-#define AUDIO_STOP_FREQ    8000
+#define AUDIO_STOP_FREQ    4000
 #define AUDIO_FFT_LEN      1024
 #define AUDIO_FREQ_TO_IDX(freq) ((freq) * AUDIO_FFT_LEN / AUDIO_SAMPLERATE)
 #define AUDIO_IDX_TO_FREQ(idx ) ( AUDIO_SAMPLERATE * (idx) / AUDIO_FFT_LEN)
+#define SCREEN_WIDTH       512
+#define SCREEN_HEIGHT      200
 
 float gen_sin_pcm_with_phase(int16_t *pcm, int n, int samprate, int freq, int amp, float phase)
 {
@@ -29,6 +31,52 @@ static int ringbuf_write(uint8_t *rbuf, int maxsize, int tail, uint8_t *src, int
     memcpy(buf1, src + 0   , len1);
     memcpy(buf2, src + len1, len2);
     return len2 ? len2 : tail + len1;
+}
+
+static int ringbuf_read(uint8_t *rbuf, int maxsize, int head, uint8_t *dst, int len)
+{
+    uint8_t *buf1 = rbuf    + head;
+    int      len1 = maxsize - head < len ? maxsize - head : len;
+    uint8_t *buf2 = rbuf;
+    int      len2 = len - len1;
+    if (dst) {
+        memcpy(dst + 0   , buf1, len1);
+        memcpy(dst + len1, buf2, len2);
+    }
+    return len2 ? len2 : head + len1;
+}
+
+static void bmp_setpixel(uint32_t *disp, int x, int y, int c)
+{
+    if (x < 0 || x >= SCREEN_WIDTH || y < 0 || y >= SCREEN_HEIGHT) return;
+    *(disp + y * SCREEN_WIDTH + x) = c;
+}
+
+static void bmp_line(uint32_t *disp, int x1, int y1, int x2, int y2, int c)
+{
+    int dx, dy, d, e;
+    if (!disp) return;
+
+    dx = abs(x1 - x2);
+    dy = abs(y1 - y2);
+    if ((dx >= dy && x1 > x2) || (dx < dy && y1 > y2)) {
+        d = x1; x1 = x2; x2 = d;
+        d = y1; y1 = y2; y2 = d;
+    }
+    if (dx >= dy) {
+        d = y2 - y1 > 0 ? 1 : -1;
+        for (e = dx/2; x1 < x2; x1++, e += dy) {
+            if (e >= dx) e -= dx, y1 += d;
+            bmp_setpixel(disp, x1, y1, c);
+        }
+    } else {
+        d = x2 - x1 > 0 ? 1 : -1;
+        for (e = dy/2; y1 < y2; y1++, e += dx) {
+            if (e >= dy) e -= dy, x1 += d;
+            bmp_setpixel(disp, x1, y1, c);
+        }
+    }
+    bmp_setpixel(disp, x2, y2, c);
 }
 
 int main(void)
@@ -71,6 +119,45 @@ int main(void)
     }
     *REG_FFVM_AUDIO_OUT_SIZE = 0;
     *REG_FFVM_AUDIO_OUT_FMT  = 0;
+
+    uint32_t *disp_buf = malloc(SCREEN_WIDTH * SCREEN_HEIGHT * sizeof(uint32_t));
+    printf("disp_buf: %p\n", disp_buf);
+    *REG_FFVM_DISP_ADDR     = (uint32_t)disp_buf;
+    *REG_FFVM_DISP_WH       = (SCREEN_WIDTH << 0) | (SCREEN_HEIGHT << 16);
+
+    *REG_FFVM_AUDIO_IN_ADDR = (uint32_t)adev_buf;
+    *REG_FFVM_AUDIO_IN_SIZE =  AUDIO_ADEV_BUFSIZE;
+    *REG_FFVM_AUDIO_IN_FMT  = (AUDIO_SAMPLERATE << 0) | (1 << 24);
+
+    while (1) {
+        int lasty, cury, flag, x, i;
+        int16_t pcm[512];
+        *REG_FFVM_AUDIO_IN_LOCK = 1;
+        if (*REG_FFVM_AUDIO_IN_CURR >= sizeof(pcm)) {
+            *REG_FFVM_AUDIO_IN_HEAD  = ringbuf_read(adev_buf, *REG_FFVM_AUDIO_IN_SIZE, *REG_FFVM_AUDIO_IN_HEAD, (uint8_t*)pcm, sizeof(pcm));
+            *REG_FFVM_AUDIO_IN_CURR -= sizeof(pcm);
+            flag = 1;
+        } else {
+            flag = 0;
+        }
+        *REG_FFVM_AUDIO_IN_LOCK = 0;
+
+        if (flag) {
+            memset(disp_buf, 0, SCREEN_WIDTH * SCREEN_HEIGHT * sizeof(uint32_t));
+            lasty = pcm[0] * SCREEN_HEIGHT / 0x10000 + SCREEN_HEIGHT / 2;
+            for (x = 1; x < SCREEN_WIDTH; x++) {
+                i    = (sizeof(pcm) / sizeof(int16_t) - 1) * x / (SCREEN_WIDTH - 1);
+                cury = pcm[i] * SCREEN_HEIGHT / 0x10000 + SCREEN_HEIGHT / 2;
+                bmp_line(disp_buf, x - 1, lasty, x, cury, 0x00FF00);
+                lasty = cury;
+            }
+            *REG_FFVM_DISP_REFRESH_WH = (SCREEN_WIDTH << 0) | (SCREEN_HEIGHT << 16);
+        }
+    }
+
+    *REG_FFVM_AUDIO_IN_SIZE = 0;
+    *REG_FFVM_AUDIO_IN_FMT  = 0;
+    *REG_FFVM_DISP_WH       = 0;
 
     free(adev_buf);
     free(test_buf);

@@ -31,7 +31,6 @@
 #define REG_FFVM_AUDIO_IN_SIZE    ((volatile uint32_t*)0xFF000330)
 #define REG_FFVM_AUDIO_IN_CURR    ((volatile uint32_t*)0xFF000334)
 #define REG_FFVM_AUDIO_IN_LOCK    ((volatile uint32_t*)0xFF000338)
-#define REG_FFVM_AUDIO_IN_BUSY    ((volatile uint32_t*)0xFF00033C)
 
 #define REG_FFVM_TICKTIME         ((volatile uint32_t*)0xFF000400)
 #define REG_FFVM_REALTIME         ((volatile uint32_t*)0xFF000404)
