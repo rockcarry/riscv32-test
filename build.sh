@@ -10,6 +10,7 @@ case "$1" in
     make -C $PWD/bricks
     make -C $PWD/time
     make -C $PWD/disp
+    make -C $PWD/audio
     ;;
 clean|distclean)
     make -C $PWD/libffvm clean
@@ -18,5 +19,6 @@ clean|distclean)
     make -C $PWD/bricks  clean
     make -C $PWD/time    clean
     make -C $PWD/disp    clean
+    make -C $PWD/audio   clean
     ;;
 esac

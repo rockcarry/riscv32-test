@@ -16,6 +16,23 @@
 #define REG_FFVM_DISP_REFRESH_WH  ((volatile uint32_t*)0xFF00020C)
 #define REG_FFVM_DISP_REFRESH_DIV ((volatile uint32_t*)0xFF000210)
 
+#define REG_FFVM_AUDIO_OUT_FMT    ((volatile uint32_t*)0xFF000300)
+#define REG_FFVM_AUDIO_OUT_ADDR   ((volatile uint32_t*)0xFF000304)
+#define REG_FFVM_AUDIO_OUT_HEAD   ((volatile uint32_t*)0xFF000308)
+#define REG_FFVM_AUDIO_OUT_TAIL   ((volatile uint32_t*)0xFF00030C)
+#define REG_FFVM_AUDIO_OUT_SIZE   ((volatile uint32_t*)0xFF000310)
+#define REG_FFVM_AUDIO_OUT_CURR   ((volatile uint32_t*)0xFF000314)
+#define REG_FFVM_AUDIO_OUT_LOCK   ((volatile uint32_t*)0xFF000318)
+
+#define REG_FFVM_AUDIO_IN_FMT     ((volatile uint32_t*)0xFF000320)
+#define REG_FFVM_AUDIO_IN_ADDR    ((volatile uint32_t*)0xFF000324)
+#define REG_FFVM_AUDIO_IN_HEAD    ((volatile uint32_t*)0xFF000328)
+#define REG_FFVM_AUDIO_IN_TAIL    ((volatile uint32_t*)0xFF00032C)
+#define REG_FFVM_AUDIO_IN_SIZE    ((volatile uint32_t*)0xFF000330)
+#define REG_FFVM_AUDIO_IN_CURR    ((volatile uint32_t*)0xFF000334)
+#define REG_FFVM_AUDIO_IN_LOCK    ((volatile uint32_t*)0xFF000338)
+#define REG_FFVM_AUDIO_IN_BUSY    ((volatile uint32_t*)0xFF00033C)
+
 #define REG_FFVM_TICKTIME         ((volatile uint32_t*)0xFF000400)
 #define REG_FFVM_REALTIME         ((volatile uint32_t*)0xFF000404)
 
