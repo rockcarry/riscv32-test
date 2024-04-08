@@ -6,7 +6,7 @@ OBJCOPY       ?= $(CROSS_COMPILE)objcopy
 LIBFFVM_TOP = $(shell pwd)/../libffvm
 
 C_FLAGS := -Wall -Os -I$(LIBFFVM_TOP)
-LDFLAGS := -L$(LIBFFVM_TOP)/lib --specs=picolibc.specs --oslib=ffvm --crt0=hosted -T$(LIBFFVM_TOP)/ffvm.ld
+LDFLAGS := -L$(LIBFFVM_TOP)/lib --specs=picolibc.specs --oslib=ffvm -T$(LIBFFVM_TOP)/ffvm.ld
 
 PROGS = snake.elf
 PROMS = snake.rom
