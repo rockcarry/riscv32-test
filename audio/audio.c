@@ -46,13 +46,13 @@ static int ringbuf_read(uint8_t *rbuf, int maxsize, int head, uint8_t *dst, int 
     return len2 ? len2 : head + len1;
 }
 
-static void bmp_setpixel(uint32_t *disp, int x, int y, int c)
+static void setpixel(uint32_t *disp, int x, int y, int c)
 {
     if (x < 0 || x >= SCREEN_WIDTH || y < 0 || y >= SCREEN_HEIGHT) return;
     *(disp + y * SCREEN_WIDTH + x) = c;
 }
 
-static void bmp_line(uint32_t *disp, int x1, int y1, int x2, int y2, int c)
+static void line(uint32_t *disp, int x1, int y1, int x2, int y2, int c)
 {
     int dx, dy, d, e;
     if (!disp) return;
@@ -67,16 +67,16 @@ static void bmp_line(uint32_t *disp, int x1, int y1, int x2, int y2, int c)
         d = y2 - y1 > 0 ? 1 : -1;
         for (e = dx/2; x1 < x2; x1++, e += dy) {
             if (e >= dx) e -= dx, y1 += d;
-            bmp_setpixel(disp, x1, y1, c);
+            setpixel(disp, x1, y1, c);
         }
     } else {
         d = x2 - x1 > 0 ? 1 : -1;
         for (e = dy/2; y1 < y2; y1++, e += dx) {
             if (e >= dy) e -= dy, x1 += d;
-            bmp_setpixel(disp, x1, y1, c);
+            setpixel(disp, x1, y1, c);
         }
     }
-    bmp_setpixel(disp, x2, y2, c);
+    setpixel(disp, x2, y2, c);
 }
 
 int main(void)
@@ -144,11 +144,11 @@ int main(void)
 
         if (flag) {
             memset(disp_buf, 0, SCREEN_WIDTH * SCREEN_HEIGHT * sizeof(uint32_t));
-            lasty = pcm[0] * SCREEN_HEIGHT / 0x10000 + SCREEN_HEIGHT / 2;
+            lasty = SCREEN_HEIGHT / 2 - pcm[0] * SCREEN_HEIGHT / 0x10000;
             for (x = 1; x < SCREEN_WIDTH; x++) {
                 i    = (sizeof(pcm) / sizeof(int16_t) - 1) * x / (SCREEN_WIDTH - 1);
-                cury = pcm[i] * SCREEN_HEIGHT / 0x10000 + SCREEN_HEIGHT / 2;
-                bmp_line(disp_buf, x - 1, lasty, x, cury, 0x00FF00);
+                cury = SCREEN_HEIGHT / 2 - pcm[i] * SCREEN_HEIGHT / 0x10000;
+                line(disp_buf, x - 1, lasty, x, cury, 0x00FF00);
                 lasty = cury;
             }
             *REG_FFVM_DISP_REFRESH_WH = (SCREEN_WIDTH << 0) | (SCREEN_HEIGHT << 16);

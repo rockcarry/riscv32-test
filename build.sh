@@ -9,6 +9,7 @@ case "$1" in
     make -C $PWD/snake
     make -C $PWD/bricks
     make -C $PWD/time
+    make -C $PWD/input
     make -C $PWD/disp
     make -C $PWD/audio
     ;;
@@ -18,6 +19,7 @@ clean|distclean)
     make -C $PWD/snake   clean
     make -C $PWD/bricks  clean
     make -C $PWD/time    clean
+    make -C $PWD/input   clean
     make -C $PWD/disp    clean
     make -C $PWD/audio   clean
     ;;
