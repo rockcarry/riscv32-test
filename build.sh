@@ -12,15 +12,17 @@ case "$1" in
     make -C $PWD/input
     make -C $PWD/disp
     make -C $PWD/audio
+    make -C $PWD/lvgltest
     ;;
 clean|distclean)
-    make -C $PWD/libffvm clean
-    make -C $PWD/2048    clean
-    make -C $PWD/snake   clean
-    make -C $PWD/bricks  clean
-    make -C $PWD/time    clean
-    make -C $PWD/input   clean
-    make -C $PWD/disp    clean
-    make -C $PWD/audio   clean
+    make -C $PWD/libffvm  clean
+    make -C $PWD/2048     clean
+    make -C $PWD/snake    clean
+    make -C $PWD/bricks   clean
+    make -C $PWD/time     clean
+    make -C $PWD/input    clean
+    make -C $PWD/disp     clean
+    make -C $PWD/audio    clean
+    make -C $PWD/lvgltest clean
     ;;
 esac
