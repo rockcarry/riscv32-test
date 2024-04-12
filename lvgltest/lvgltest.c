@@ -74,7 +74,7 @@ int main(void)
 
     uint32_t tick_last = get_tick_count(), tick_cur;
     int32_t  tick_inc;
-    while (1) {
+    while (*REG_FFVM_DISP_WH) {
         tick_cur  = get_tick_count();
         tick_inc  = (int32_t)tick_cur - (int32_t)tick_last;
         if (tick_inc > 0) {

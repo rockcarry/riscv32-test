@@ -21,11 +21,7 @@ int main(void)
             disp_buf[i * disp_w + j] = (i << 16) | (j << 8) | (i << 0);
         }
     }
-    mdelay(100);
-    while (1) {
-        char cmd[256]; scanf("%255s", cmd);
-        if (strcmp(cmd, "quit") == 0 || strcmp(cmd, "exit") == 0) break;
-    }
+    while (*REG_FFVM_DISP_WH);
     free(disp_buf);
     return 0;
 }

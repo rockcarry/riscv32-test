@@ -129,7 +129,7 @@ int main(void)
     *REG_FFVM_AUDIO_IN_SIZE =  AUDIO_ADEV_BUFSIZE;
     *REG_FFVM_AUDIO_IN_FMT  = (AUDIO_SAMPLERATE << 0) | (1 << 24);
 
-    while (1) {
+    while (*REG_FFVM_DISP_WH) {
         int lasty, cury, flag, x, i;
         int16_t pcm[512];
         *REG_FFVM_AUDIO_IN_LOCK = 1;

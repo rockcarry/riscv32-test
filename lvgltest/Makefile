@@ -7,7 +7,7 @@ LIBFFVM_TOP = $(shell pwd)/../libffvm
 LIBLVGL_TOP = $(shell pwd)/../liblvgl
 
 C_FLAGS := -Wall -Os -g -I$(LIBFFVM_TOP) -I$(LIBLVGL_TOP)/include
-LDFLAGS := -L$(LIBFFVM_TOP)/lib -L$(LIBLVGL_TOP)/lib --specs=picolibc.specs --oslib=ffvm -T$(LIBFFVM_TOP)/ffvm.ld -llvgl_demos -llvgl
+LDFLAGS := -L$(LIBFFVM_TOP)/lib -L$(LIBLVGL_TOP)/lib --specs=picolibc.specs --oslib=ffvm --crt0=hosted -T$(LIBFFVM_TOP)/ffvm.ld -llvgl_demos -llvgl
 
 PROGS = lvgltest.elf
 PROMS = lvgltest.rom
