@@ -18,8 +18,6 @@
         color_p += n, pdst += SCREEN_WIDTH;
     }
     lv_disp_flush_ready(disp_drv);
-    *REG_FFVM_DISP_REFRESH_XY = (area->x1 << 0) | (area->y1 << 16);
-    *REG_FFVM_DISP_REFRESH_WH = ((area->x2 - area->x1 + 1) << 0) | ((area->y2 - area->y1 + 1) << 16);
 }
 
 static void mouse_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data)
@@ -40,8 +38,10 @@ int main(void)
 {
     uint32_t *disp_buf = malloc(SCREEN_WIDTH * SCREEN_HEIGHT * sizeof(uint32_t) + 2 * SCREEN_WIDTH * SCREEN_HEIGHT / 2 * sizeof(lv_color_t));
     if (!disp_buf) { printf("failed to allocate display buffer !\n"); return 0; }
-    *REG_FFVM_DISP_ADDR = (uint32_t)disp_buf;
-    *REG_FFVM_DISP_WH   = (SCREEN_WIDTH << 0) | (SCREEN_HEIGHT << 16);
+    *REG_FFVM_DISP_ADDR        = (uint32_t)disp_buf;
+    *REG_FFVM_DISP_WH          = (SCREEN_WIDTH << 0) | (SCREEN_HEIGHT << 16);
+    *REG_FFVM_DISP_REFRESH_WH  = (SCREEN_WIDTH << 0) | (SCREEN_HEIGHT << 16);
+    *REG_FFVM_DISP_REFRESH_DIV = 4;
 
     lv_disp_draw_buf_t disp_draw = {};
     lv_disp_drv_t      disp_drv  = {};
