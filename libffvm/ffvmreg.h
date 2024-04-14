@@ -42,4 +42,9 @@
 #define REG_FFVM_TICKTIME         ((volatile uint32_t*)0xFF000400)
 #define REG_FFVM_REALTIME         ((volatile uint32_t*)0xFF000404)
 
+#define REG_FFVM_DISK_SECTOR_NUM  ((volatile uint32_t*)0xFF000500)
+#define REG_FFVM_DISK_SECTOR_SIZE ((volatile uint32_t*)0xFF000504)
+#define REG_FFVM_DISK_SECTOR_IDX  ((volatile uint32_t*)0xFF000508)
+#define REG_FFVM_DISK_SECTOR_DAT  ((volatile uint32_t*)0xFF00050C)
+
 #endif
