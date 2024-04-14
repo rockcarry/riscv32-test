@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 #include "ffvmreg.h"
 
 static int stdin_getc(FILE *file)
@@ -108,3 +109,9 @@ void _ATTRIBUTE ((__noreturn__)) _exit(int code)
     while (1);
 }
 
+int gettimeofday(struct timeval *restrict tv, void *restrict tz)
+{
+    tv->tv_sec  = *REG_FFVM_REALTIME;
+    tv->tv_usec = *REG_FFVM_TICKTIME * 1000;
+    return 0;
+}
