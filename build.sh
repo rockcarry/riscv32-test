@@ -14,6 +14,7 @@ case "$1" in
     make -C $PWD/disp
     make -C $PWD/audio
     make -C $PWD/lvgltest
+    make -C $PWD/file
     ;;
 clean|distclean)
     make -C $PWD/libffvm  clean
@@ -26,5 +27,6 @@ clean|distclean)
     make -C $PWD/disp     clean
     make -C $PWD/audio    clean
     make -C $PWD/lvgltest clean
+    make -C $PWD/file     clean
     ;;
 esac
