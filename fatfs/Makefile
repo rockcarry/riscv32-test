@@ -39,5 +39,5 @@ $(OBJPROG) : $(addprefix $(OBJDIR)/, $(OBJECTS)) $(addprefix $(OBJDIR)/, $(CXXOB
 $(OBJDIR)/%.c.o : %.c
 	@mkdir -p obj
 	@echo "  CC  $<"
-	$(GCC) $(C_FLAGS) $(C_INCLUDES) -c $< -o $@
+	$(GCC) $(C_FLAGS) -c $< -o $@
 

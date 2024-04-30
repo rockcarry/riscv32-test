@@ -3,10 +3,14 @@ GCC           ?= $(CROSS_COMPILE)gcc
 GXX           ?= $(CROSS_COMPILE)g++
 OBJCOPY       ?= $(CROSS_COMPILE)objcopy
 
-LIBFFVM_TOP = $(shell pwd)/../libffvm
+LIBFFVM_TOP  = $(shell pwd)/../libffvm
+LIBFATFS_TOP = $(shell pwd)/../fatfs
 
 C_FLAGS := -Wall -Os -g -I$(LIBFFVM_TOP)
-LDFLAGS := -L$(LIBFFVM_TOP)/lib --specs=picolibc.specs --oslib=ffvm --crt0=hosted -T$(LIBFFVM_TOP)/ffvm.ld
+LDFLAGS := --specs=picolibc.specs --crt0=hosted -T$(LIBFFVM_TOP)/ffvm.ld
+LDFLAGS += -L$(LIBFFVM_TOP)/lib -L$(LIBFATFS_TOP)/lib
+LDFLAGS += -Wl,--gc-sections,--start-group
+LDFLAGS += --oslib=ffvm -lfatfs
 
 PROGS = input.elf
 PROMS = input.rom
@@ -47,5 +51,5 @@ $(BINPROG) : $(addprefix $(OBJDIR)/, $(OBJECTS)) $(addprefix $(OBJDIR)/, $(CXXOB
 $(OBJDIR)/%.c.o : %.c
 	@mkdir -p obj
 	@echo "  CC  $<"
-	$(GCC) $(C_FLAGS) $(C_INCLUDES) -c $< -o $@
+	$(GCC) $(C_FLAGS) -c $< -o $@
 

@@ -9,7 +9,7 @@
 
 #include <stdint.h>
 #include <time.h>
-#include "ff.h"         /* Obtains integer types */
+#include "fatfs.h"      /* Obtains integer types */
 #include "diskio.h"     /* Declarations of disk functions */
 
 #define REG_FFVM_DISK_SECTOR_NUM  ((volatile uint32_t*)0xFF000500)

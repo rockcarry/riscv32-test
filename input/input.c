@@ -31,7 +31,7 @@ int main(void)
     int lastmx = -1, lastmy = -1, curmx, curmy, mbtn, color;
     int lastox = SCREEN_WIDTH / 2, lastoy = SCREEN_HEIGHT / 2, curox = lastox, curoy = lastoy;
 
-    while (1) {
+    while (*REG_FFVM_DISP_WH) {
         if (*REG_FFVM_KEYBD3 & (1 << 6)) curox += 2; // f
         if (*REG_FFVM_KEYBD3 & (1 << 5)) curoy -= 2; // e
         if (*REG_FFVM_KEYBD3 & (1 << 4)) curoy += 2; // d
