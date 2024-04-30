@@ -7,7 +7,7 @@ LIBFFVM_TOP  = $(shell pwd)/../libffvm
 LIBFATFS_TOP = $(shell pwd)/../fatfs
 
 C_FLAGS := -Wall -Os -I$(LIBFFVM_TOP) -I$(LIBFATFS_TOP)
-LDFLAGS := -L$(LIBFFVM_TOP)/lib -L$(LIBFATFS_TOP)/lib -lfatfs --specs=picolibc.specs --oslib=ffvm --crt0=hosted -T$(LIBFFVM_TOP)/ffvm.ld
+LDFLAGS := -Wl,--start-group -L$(LIBFFVM_TOP)/lib -L$(LIBFATFS_TOP)/lib -lfatfs --specs=picolibc.specs --oslib=ffvm --crt0=hosted -T$(LIBFFVM_TOP)/ffvm.ld
 
 PROGS = file.elf
 PROMS = file.rom

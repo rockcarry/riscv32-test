@@ -1,9 +1,11 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/time.h>
+#include <fatfs.h>
 #include "ffvmreg.h"
 
 static int stdin_getc(FILE *file)
@@ -53,59 +55,120 @@ void mdelay(int ms)
     while ((int32_t)tick_end - (int32_t)*REG_FFVM_TICKTIME > 0);
 }
 
+static FATFS s_fatfs_context;
+static int   s_fatfs_inited = 0;
+static FIL  *s_fil_list[256];
 int open(const char *file, int flags, ...)
 {
-    (void) file;
-    (void) flags;
-    return -1;
+    if (s_fatfs_inited == 0) {
+        s_fatfs_inited = 1;
+        f_mount(&s_fatfs_context, "", 0);
+    }
+
+    int  i;
+    for (i = 3; i < 256 && s_fil_list[i]; i++);
+    if  (i == 256) return -1;
+
+    FIL *fil = malloc(sizeof(FIL));
+    if (!fil) return -1;
+
+    uint8_t mode = 0;
+    if (flags & O_RDONLY) mode = FA_READ;
+    if (flags & O_WRONLY) mode = FA_WRITE;
+    if (flags & O_RDWR  ) mode = FA_READ | FA_WRITE;
+    if (flags & O_CREAT ) {
+        if (flags & O_EXCL) mode |= FA_CREATE_NEW;
+        else mode |= FA_CREATE_ALWAYS;
+    } else {
+        if (flags & O_APPEND) mode |= FA_OPEN_APPEND;
+    }
+    int ret = f_open(fil, file, FA_READ);
+    if (ret != FR_OK) { free(fil); return -1; }
+
+    s_fil_list[i] = fil;
+    return i;
 }
 
 int close(int fd)
 {
-    (void) fd;
-    return -1;
+    if (fd < 3 || fd >= 256) return -1;
+    FIL *fil = s_fil_list[fd];
+    if (fil) { f_close(fil); free(fil); }
+    s_fil_list[fd] = NULL;
+    return 0;
 }
 
 int fstat(int fd, struct stat *sbuf)
 {
-    (void) fd;
-    (void) sbuf;
-    return -1;
+    if (fd < 3 || fd >= 256) return -1;
+    FIL *fil = s_fil_list[fd];
+    if (!fil) return -1;
+    sbuf->st_size = f_size(fil);
+    return 0;
 }
 
 ssize_t read(int fd, void *buf, size_t nbyte)
 {
-    (void) fd;
-    (void) buf;
-    (void) nbyte;
-    return -1;
+    if (fd < 3 || fd >= 256) return -1;
+    FIL *fil = s_fil_list[fd];
+    if (!fil) return -1;
+    unsigned n;
+    FRESULT ret = f_read(fil, buf, nbyte, &n);
+    return ret == FR_OK ? n : -1;
 }
 
 ssize_t write(int fd, const void *buf, size_t nbyte)
 {
-    (void) fd;
-    (void) buf;
-    (void) nbyte;
-    return -1;
+    if (fd < 3 || fd >= 256) return -1;
+    FIL *fil = s_fil_list[fd];
+    if (!fil) return -1;
+    unsigned n;
+    FRESULT ret = f_write(fil, buf, nbyte, &n);
+    return ret == FR_OK ? n : -1;
 }
 
 off_t lseek(int fd, off_t offset, int whence)
 {
-    (void) fd;
-    (void) offset;
-    (void) whence;
-    return -1;
+    if (fd < 3 || fd >= 256) return -1;
+    FIL *fil = s_fil_list[fd];
+    if (!fil) return -1;
+    switch (whence) {
+    case SEEK_SET: f_lseek(fil, offset); break;
+    case SEEK_END: f_lseek(fil, offset + f_size(fil)); break;
+    case SEEK_CUR: f_lseek(fil, offset + f_tell(fil)); break;
+    }
+    return f_tell(fil);
 }
 
 int unlink(const char *pathname)
 {
-    (void) pathname;
-    return -1;
+    return f_unlink(pathname);
+}
+
+int rename(const char *oldname, const char *newname)
+{
+    return f_rename(oldname, newname);
+}
+
+int mkdir(const char *path, mode_t mode)
+{
+    return f_mkdir(path);
+}
+
+int chdir(const char *path)
+{
+    return f_chdir(path);
+}
+
+char* getcwd(char *buf, size_t size)
+{
+    return f_getcwd(buf, size) == FR_OK ? buf : NULL;
 }
 
 void _ATTRIBUTE ((__noreturn__)) _exit(int code)
 {
     (void) code;
+    f_unmount("");
     __asm__("li x17, 93");
     __asm__("ecall");
     while (1);
