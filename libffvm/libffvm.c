@@ -8,7 +8,9 @@
 
 static int stdin_getc(FILE *file)
 {
-    return *REG_FFVM_STDIO;
+    int  ch;
+    do { ch = *REG_FFVM_STDIO; } while (ch == EOF);
+    return ch;
 }
 
 static int stdout_putc(char c, FILE *file)
