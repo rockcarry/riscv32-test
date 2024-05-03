@@ -5,11 +5,17 @@
 #include "ffvmreg.h"
 #include "libffvm.h"
 
-#define SCREEN_WIDTH  480
-#define SCREEN_HEIGHT 360
+#define SCREEN_WIDTH     480
+#define SCREEN_HEIGHT    360
+#define ENABLE_HW_BITBLT 1
 
- void disp_flush(lv_disp_drv_t *disp_drv, const lv_area_t *area, lv_color_t *color_p)
+static void disp_flush(lv_disp_drv_t *disp_drv, const lv_area_t *area, lv_color_t *color_p)
 {
+#if ENABLE_HW_BITBLT
+    *REG_FFVM_DISP_BITBLT_ADDR = (uint32_t)color_p;
+    *REG_FFVM_DISP_BITBLT_XY   = (area->x1 << 0) | (area->y1 << 16);
+    *REG_FFVM_DISP_BITBLT_WH   = ((area->x2 - area->x1 + 1) << 0) | ((area->y2 - area->y1 + 1) << 16);
+#else
     lv_color_t *disp = disp_drv->user_data;
     lv_color_t *pdst = disp + area->y1 * SCREEN_WIDTH + area->x1;
     int         n    = area->x2 - area->x1 + 1, i;
@@ -17,6 +23,7 @@
         memcpy(pdst, color_p, n * sizeof(lv_color_t));
         color_p += n, pdst += SCREEN_WIDTH;
     }
+#endif
     lv_disp_flush_ready(disp_drv);
 }
 

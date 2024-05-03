@@ -22,6 +22,9 @@
 #define REG_FFVM_DISP_REFRESH_XY  ((volatile uint32_t*)0xFF000208)
 #define REG_FFVM_DISP_REFRESH_WH  ((volatile uint32_t*)0xFF00020C)
 #define REG_FFVM_DISP_REFRESH_DIV ((volatile uint32_t*)0xFF000210)
+#define REG_FFVM_DISP_BITBLT_ADDR ((volatile uint32_t*)0xFF000214)
+#define REG_FFVM_DISP_BITBLT_XY   ((volatile uint32_t*)0xFF000218)
+#define REG_FFVM_DISP_BITBLT_WH   ((volatile uint32_t*)0xFF00021C)
 
 #define REG_FFVM_AUDIO_OUT_FMT    ((volatile uint32_t*)0xFF000300)
 #define REG_FFVM_AUDIO_OUT_ADDR   ((volatile uint32_t*)0xFF000304)
