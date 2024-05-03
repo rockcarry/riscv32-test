@@ -42,8 +42,11 @@
 #define REG_FFVM_AUDIO_IN_CURR    ((volatile uint32_t*)0xFF000334)
 #define REG_FFVM_AUDIO_IN_LOCK    ((volatile uint32_t*)0xFF000338)
 
-#define REG_FFVM_TICKTIME         ((volatile uint32_t*)0xFF000400)
-#define REG_FFVM_REALTIME         ((volatile uint32_t*)0xFF000404)
+#define REG_FFVM_MTIMECURL        ((volatile uint32_t*)0xFF000400)
+#define REG_FFVM_MTIMECURH        ((volatile uint32_t*)0xFF000404)
+#define REG_FFVM_MTIMECMPL        ((volatile uint32_t*)0xFF000408)
+#define REG_FFVM_MTIMECMPH        ((volatile uint32_t*)0xFF00040C)
+#define REG_FFVM_REALTIME         ((volatile uint32_t*)0xFF000410)
 
 #define REG_FFVM_DISK_SECTOR_NUM  ((volatile uint32_t*)0xFF000500)
 #define REG_FFVM_DISK_SECTOR_SIZE ((volatile uint32_t*)0xFF000504)

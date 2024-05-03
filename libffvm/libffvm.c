@@ -51,8 +51,8 @@ void gotoxy(int x, int y) { *REG_FFVM_GOTOXY = (x << 0) | (y << 16); }
 
 void mdelay(int ms)
 {
-    uint32_t tick_end = *REG_FFVM_TICKTIME + ms;
-    while ((int32_t)tick_end - (int32_t)*REG_FFVM_TICKTIME > 0);
+    uint32_t tick_end = *REG_FFVM_MTIMECURL + ms;
+    while ((int32_t)tick_end - (int32_t)*REG_FFVM_MTIMECURL > 0);
 }
 
 #if ENABLE_FATFS
@@ -188,6 +188,6 @@ void _ATTRIBUTE ((__noreturn__)) _exit(int code)
 int gettimeofday(struct timeval *restrict tv, void *restrict tz)
 {
     tv->tv_sec  = *REG_FFVM_REALTIME;
-    tv->tv_usec = *REG_FFVM_TICKTIME * 1000;
+    tv->tv_usec = *REG_FFVM_MTIMECURL * 1000;
     return 0;
 }

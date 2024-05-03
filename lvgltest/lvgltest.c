@@ -34,7 +34,7 @@ static void mouse_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data)
     data->state   = (*REG_FFVM_MOUSE_BTN & (1 << 0)) ? LV_INDEV_STATE_PRESSED : LV_INDEV_STATE_RELEASED;
 }
 
-static uint32_t get_tick_count(void) { return *REG_FFVM_TICKTIME; }
+static uint32_t get_tick_count(void) { return *REG_FFVM_MTIMECURL; }
 
 extern void lv_demo_widgets(void);
 extern void lv_demo_widgets_close(void);
