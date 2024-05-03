@@ -55,6 +55,7 @@ void mdelay(int ms)
     while ((int32_t)tick_end - (int32_t)*REG_FFVM_TICKTIME > 0);
 }
 
+#if ENABLE_FATFS
 static FATFS s_fatfs_context;
 static int   s_fatfs_inited = 0;
 static FIL  *s_fil_list[256];
@@ -164,11 +165,21 @@ char* getcwd(char *buf, size_t size)
 {
     return f_getcwd(buf, size) == FR_OK ? buf : NULL;
 }
+#else
+int open(const char *file, int flags, ...) { return -1; }
+int close(int fd) { return -1; }
+ssize_t read(int fd, void *buf, size_t nbyte) { return -1; }
+ssize_t write(int fd, const void *buf, size_t nbyte) { return -1; }
+off_t lseek(int fd, off_t offset, int whence) { return -1; }
+#endif
 
 void _ATTRIBUTE ((__noreturn__)) _exit(int code)
 {
-    (void) code;
+#if ENABLE_FATFS
     f_unmount("");
+#endif
+
+    (void) code;
     __asm__("li x17, 93");
     __asm__("ecall");
     while (1);
