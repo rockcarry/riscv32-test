@@ -3,6 +3,16 @@
 
 #include <stdint.h>
 
+#define RISCV_CSR_MSTATUS         0x300
+#define RISCV_CSR_MISA            0x301
+#define RISCV_CSR_MIE             0x304
+#define RISCV_CSR_MTVEC           0x305
+#define RISCV_CSR_MSCRATCH        0x340
+#define RISCV_CSR_MEPC            0x341
+#define RISCV_CSR_MCAUSE          0x342
+#define RISCV_CSR_MTVAL           0x343
+#define RISCV_CSR_MIP             0x344
+
 #define REG_FFVM_STDIO            ((volatile uint32_t*)0xFF000000)
 #define REG_FFVM_STDERR           ((volatile uint32_t*)0xFF000004)
 #define REG_FFVM_GETCH            ((volatile uint32_t*)0xFF000008)
