@@ -4,16 +4,18 @@
 #include <stdatomic.h>
 #include "ffvmreg.h"
 #include "libffvm.h"
+#include "fftask.h"
 #include "pthread.h"
 
 static int s_counter;
 
-static void __attribute__((interrupt)) __attribute__((aligned(4))) libpthread_timer_isr(void)
+TASK* task_schedule(void)
 {
     uint64_t mtimecmp = ((*REG_FFVM_MTIMECMPL << 0) | ((uint64_t)*REG_FFVM_MTIMECMPH << 32)) + 20;
     *REG_FFVM_MTIMECMPL = mtimecmp >>  0;
     *REG_FFVM_MTIMECMPH = mtimecmp >> 32;
     s_counter++;
+    return NULL;
 }
 
 static uint32_t read_csr(uint32_t addr)
@@ -37,7 +39,7 @@ void libpthread_init(void)
     *REG_FFVM_MTIMECMPL = mtimecur >>  0;
     *REG_FFVM_MTIMECMPH = mtimecur >> 32;
 
-    write_csr(RISCV_CSR_MTVEC, (uint32_t)libpthread_timer_isr); // setup timer isr
+    write_csr(RISCV_CSR_MTVEC, (uint32_t)task_timer_isr); // setup timer isr
 
     uint32_t val;
     val  = read_csr(RISCV_CSR_MSTATUS);

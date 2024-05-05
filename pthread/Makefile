@@ -19,9 +19,9 @@ COMP_C_SRCS=$(wildcard ./*.c)
 COMP_C_SRCS_NO_DIR=$(notdir $(COMP_C_SRCS))
 OBJECTS=$(patsubst %.c, %.c.o, $(COMP_C_SRCS_NO_DIR))
 
-COMP_CPP_SRCS=$(wildcard ./*.cpp)
-COMP_CPP_SRCS_NO_DIR=$(notdir $(COMP_CPP_SRCS))
-CXXOBJS=$(patsubst %.cpp, %.cpp.o, $(COMP_CPP_SRCS_NO_DIR))
+COMP_ASM_SRCS=$(wildcard ./*.s)
+COMP_ASM_SRCS_NO_DIR=$(notdir $(COMP_ASM_SRCS))
+ASMOBJS=$(patsubst %.s, %.s.o, $(COMP_ASM_SRCS_NO_DIR))
 
 OBJDIR ?= $(shell pwd)/obj
 BINDIR ?= $(shell pwd)/bin
@@ -43,13 +43,17 @@ $(BINPROM) : $(BINPROG)
 	@echo "  ROM $@"
 	$(OBJCOPY) -O binary $< $@
 
-$(BINPROG) : $(addprefix $(OBJDIR)/, $(OBJECTS)) $(addprefix $(OBJDIR)/, $(CXXOBJS))
+$(BINPROG) : $(addprefix $(OBJDIR)/, $(OBJECTS)) $(addprefix $(OBJDIR)/, $(ASMOBJS))
 	@mkdir -p $(BINDIR)
 	@echo "  ELF $@"
-	$(GCC) -o $@ $(addprefix $(OBJDIR)/, $(OBJECTS)) $(addprefix $(OBJDIR)/, $(CXXOBJS)) $(LDFLAGS)
+	$(GCC) -o $@ $(addprefix $(OBJDIR)/, $(OBJECTS)) $(addprefix $(OBJDIR)/, $(ASMOBJS)) $(LDFLAGS)
 
 $(OBJDIR)/%.c.o : %.c
 	@mkdir -p obj
 	@echo "  CC  $<"
 	$(GCC) $(C_FLAGS) -c $< -o $@
 
+$(OBJDIR)/%.s.o : %.s
+	@mkdir -p obj
+	@echo "  CC  $<"
+	$(GCC) $(C_FLAGS) -c $< -o $@
