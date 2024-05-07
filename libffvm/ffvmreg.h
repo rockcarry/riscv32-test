@@ -63,4 +63,6 @@
 #define REG_FFVM_DISK_SECTOR_IDX  ((volatile uint32_t*)0xFF000508)
 #define REG_FFVM_DISK_SECTOR_DAT  ((volatile uint32_t*)0xFF00050C)
 
+#define REG_FFVM_CPU_FREQ         ((volatile uint32_t*)0xFF000600)
+
 #endif
