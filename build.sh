@@ -15,7 +15,7 @@ case "$1" in
     make -C $PWD/audio
     make -C $PWD/lvgltest
     make -C $PWD/file
-    make -C $PWD/pthread
+    cd $PWD/pthread && ./build.sh && cd -
     mkdir -p $PWD/out
     rm   -rf $PWD/out/*
     find . -path "./out" -prune -o -iname "*.rom" -exec cp '{}' out ';'
@@ -32,7 +32,7 @@ clean|distclean)
     make -C $PWD/audio    clean
     make -C $PWD/lvgltest clean
     make -C $PWD/file     clean
-    make -C $PWD/pthread  clean
+    cd $PWD/pthread && ./build.sh $1 && cd -
     rm -rf $PWD/out
     ;;
 esac

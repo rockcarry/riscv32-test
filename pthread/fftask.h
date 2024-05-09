@@ -62,4 +62,11 @@ int      mutex_unlock   (KOBJECT *mutex);
 int      mutex_trylock  (KOBJECT *mutex);
 int      mutex_timedlock(KOBJECT *mutex, int ms);
 
+KOBJECT* cond_init(void);
+int      cond_wait(KOBJECT *cond, KOBJECT *mutex);
+int      cond_timedwait(KOBJECT *cond, KOBJECT *mutex, int ms);
+int      cond_signal(KOBJECT *cond);
+int      cond_broadcast(KOBJECT *cond);
+int      cond_destroy(KOBJECT *cond);
+
 #endif
