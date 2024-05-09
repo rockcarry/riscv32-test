@@ -83,7 +83,6 @@ static void t_dequeue(KOBJECT *obj)
     obj->t_next = obj->t_prev = obj;
 }
 
-#if 0
 static void w_enqueue(KOBJECT *queue, KOBJECT *obj)
 {
     obj->w_prev = queue->w_prev;
@@ -91,7 +90,6 @@ static void w_enqueue(KOBJECT *queue, KOBJECT *obj)
     queue->w_prev->w_next = obj;
     queue->w_prev = obj;
 }
-#endif
 
 static void w_dequeue(KOBJECT *obj)
 {
@@ -106,19 +104,20 @@ static void* idle_proc(void *arg)
     return NULL;
 }
 
-static TASKCTX* task_schedule(KOBJECT *kobj, int broadcast)
+static TASKCTX* task_schedule(KOBJECT *obj, int broadcast)
 {
     KOBJECT *k, *t;
-    if (!kobj) {
+    if (!obj) {
         uint32_t tick = get_tick_count();
         for (k = s_sleep_queue.t_next; k != &s_sleep_queue; ) {
             t = k; k = k->t_next;
             if ((int32_t)tick - (int32_t)t->taskctx->timeout >= 0) { w_dequeue(t); t_dequeue(t); t_enqueue(&s_ready_queue, t); }
         }
         s_running_task = s_ready_queue.t_next;
-        if (s_running_task == &s_ready_queue) s_running_task = s_idle_task;
-    } else if (kobj->type == FFTASK_KOBJ_TASK) {
-        s_running_task = kobj->task.joiner ? kobj->task.joiner : s_ready_queue.t_next;
+    } else if (obj->type == FFTASK_KOBJ_TASK) {
+        s_running_task = obj->task.joiner ? obj->task.joiner : s_ready_queue.t_next;
+    } else if (obj->type == FFTASK_KOBJ_MUTEX) {
+        s_running_task = obj->w_next != obj ? obj->w_next : s_ready_queue.t_next;
     }
     if (s_running_task == &s_ready_queue) s_running_task = s_idle_task;
     w_dequeue(s_running_task); t_dequeue(s_running_task);
@@ -213,9 +212,11 @@ int task_join(KOBJECT *task, uint32_t *exitcode)
     if (!(task->flags & FFTASK_KOBJ_DEAD)) {
         task->task.joiner = s_running_task;
         task_switch_then_interrupt_on(task_schedule(NULL, 0));
+        interrupt_off();
     }
     if (exitcode) *exitcode = task->taskctx->exitcode;
     free(task);
+    interrupt_on();
     return 0;
 }
 
@@ -238,12 +239,88 @@ void task_sleep(int ms)
     task_switch_then_interrupt_on(task_schedule(NULL, 0));
 }
 
-static int s_exit = 0;
+KOBJECT* mutex_create(void)
+{
+    KOBJECT *mutex = calloc(1, sizeof(KOBJECT));
+    if (!mutex) return NULL;
+    mutex->type = FFTASK_KOBJ_MUTEX;
+    mutex->w_next = mutex->w_prev = mutex;
+    return mutex;
+}
+
+int mutex_destroy(KOBJECT *mutex)
+{
+    interrupt_off();
+    if (!mutex || mutex->type != FFTASK_KOBJ_MUTEX || mutex->mutex.onwer || mutex->w_next != mutex) { interrupt_on(); return -1; }
+    free(mutex);
+    interrupt_on();
+    return 0;
+}
+
+int mutex_lock(KOBJECT *mutex)
+{
+    interrupt_off();
+    if (!mutex || mutex->type != FFTASK_KOBJ_MUTEX) { interrupt_on(); return -1; }
+    if (mutex->mutex.onwer) {
+        w_enqueue(mutex, s_running_task);
+        task_switch_then_interrupt_on(task_schedule(NULL, 0));
+        interrupt_off();
+    }
+    mutex->mutex.onwer = s_running_task;
+    interrupt_on();
+    return 0;
+}
+
+int mutex_unlock(KOBJECT *mutex)
+{
+    interrupt_off();
+    if (!mutex || mutex->type != FFTASK_KOBJ_MUTEX || mutex->mutex.onwer != s_running_task) { interrupt_on(); return -1; }
+    t_enqueue(&s_ready_queue, s_running_task);
+    mutex->mutex.onwer = NULL;
+    task_switch_then_interrupt_on(task_schedule(mutex, 0));
+    return 0;
+}
+
+int mutex_trylock(KOBJECT *mutex)
+{
+    interrupt_off();
+    if (!mutex || mutex->type != FFTASK_KOBJ_MUTEX || mutex->mutex.onwer) { interrupt_on(); return -1; }
+    mutex->mutex.onwer = s_running_task;
+    interrupt_on();
+    return 0;
+}
+
+int mutex_timedlock(KOBJECT *mutex, int ms)
+{
+    interrupt_off();
+    if (!mutex || mutex->type != FFTASK_KOBJ_MUTEX) { interrupt_on(); return -1; }
+    if (mutex->mutex.onwer) {
+        s_running_task->taskctx->timeout = get_tick_count() + ms;
+        t_enqueue(&s_sleep_queue, s_running_task); w_enqueue(mutex, s_running_task);
+        task_switch_then_interrupt_on(task_schedule(NULL, 0));
+        interrupt_off();
+    }
+    if (mutex->mutex.onwer) { interrupt_on(); return -1; }
+    mutex->mutex.onwer = s_running_task;
+    interrupt_on();
+    return 0;
+}
+
+static int      s_exit  = 0;
+static KOBJECT *s_mutex = NULL;
 static void* task1_proc(void *arg)
 {
     uint32_t *counter = arg;
     while (!s_exit) {
-        printf("task 1 counter: %lu\n", *counter += 1);
+        int ret = mutex_trylock(s_mutex);
+        if (ret == 0) {
+            printf("task1 mutex try lock ok\n");
+            printf("task 1 counter: %lu\n", *counter += 1);
+            printf("task1 mutex unlock\n");
+            mutex_unlock(s_mutex);
+        } else {
+            printf("task1 mutex try lock failed\n");
+        }
         task_sleep(100);
     }
     return (void*)1;
@@ -253,8 +330,15 @@ static void* task2_proc(void *arg)
 {
     uint32_t *counter = arg;
     while (!s_exit) {
-        printf("task 2 counter: %lu\n", *counter += 1);
-        task_sleep(200);
+        int ret = mutex_timedlock(s_mutex, 1000);
+        if (ret == 0) {
+            printf("task2 mutex timedlock ok\n");
+            printf("task 2 counter: %lu\n", *counter += 1);
+            printf("task2 mutex unlock\n");
+            mutex_unlock(s_mutex);
+        } else {
+            printf("task2 mutex timedlock failed\n");
+        }
     }
     return (void*)2;
 }
@@ -263,8 +347,12 @@ static void* task3_proc(void *arg)
 {
     uint32_t *counter = arg;
     while (!s_exit) {
+        mutex_lock(s_mutex);
+        printf("task3 mutex lock\n");
         printf("task 3 counter: %lu\n", *counter += 1);
-        task_sleep(300);
+        task_sleep(1000);
+        printf("task3 mutex unlock\n");
+        mutex_unlock(s_mutex);
     }
     return (void*)3;
 }
@@ -276,6 +364,7 @@ int main(void)
     uint32_t counter3 = 0;
     uint32_t exitcode = 0;
     task_kernel_init();
+    s_mutex = mutex_create();
     KOBJECT *task1 = task_create(task1_proc, &counter1, 0, 0);
     KOBJECT *task2 = task_create(task2_proc, &counter2, 0, 0);
     KOBJECT *task3 = task_create(task3_proc, &counter3, 0, 0);
@@ -288,6 +377,7 @@ int main(void)
     task_join(task1, &exitcode); printf("task1 exit: %lu\n", exitcode);
     task_join(task2, &exitcode); printf("task2 exit: %lu\n", exitcode);
     task_join(task3, &exitcode); printf("task3 exit: %lu\n", exitcode);
+    mutex_destroy(s_mutex);
     task_kernel_exit();
     return 0;
 }
