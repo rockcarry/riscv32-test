@@ -117,6 +117,7 @@ static TASKCTX* task_schedule(KOBJECT *obj, int broadcast)
     } else if (obj->type == FFTASK_KOBJ_TASK) {
         s_running_task = obj->task.joiner ? obj->task.joiner : s_ready_queue.t_next;
     } else if (obj->type == FFTASK_KOBJ_MUTEX) {
+        obj->mutex.onwer = obj->w_next != obj ? obj->w_next : NULL;
         s_running_task = obj->w_next != obj ? obj->w_next : s_ready_queue.t_next;
     }
     if (s_running_task == &s_ready_queue) s_running_task = s_idle_task;
@@ -212,11 +213,9 @@ int task_join(KOBJECT *task, uint32_t *exitcode)
     if (!(task->flags & FFTASK_KOBJ_DEAD)) {
         task->task.joiner = s_running_task;
         task_switch_then_interrupt_on(task_schedule(NULL, 0));
-        interrupt_off();
     }
     if (exitcode) *exitcode = task->taskctx->exitcode;
     free(task);
-    interrupt_on();
     return 0;
 }
 
@@ -264,10 +263,10 @@ int mutex_lock(KOBJECT *mutex)
     if (mutex->mutex.onwer) {
         w_enqueue(mutex, s_running_task);
         task_switch_then_interrupt_on(task_schedule(NULL, 0));
-        interrupt_off();
+    } else {
+        mutex->mutex.onwer = s_running_task;
+        interrupt_on();
     }
-    mutex->mutex.onwer = s_running_task;
-    interrupt_on();
     return 0;
 }
 
@@ -276,7 +275,6 @@ int mutex_unlock(KOBJECT *mutex)
     interrupt_off();
     if (!mutex || mutex->type != FFTASK_KOBJ_MUTEX || mutex->mutex.onwer != s_running_task) { interrupt_on(); return -1; }
     t_enqueue(&s_ready_queue, s_running_task);
-    mutex->mutex.onwer = NULL;
     task_switch_then_interrupt_on(task_schedule(mutex, 0));
     return 0;
 }
@@ -298,10 +296,10 @@ int mutex_timedlock(KOBJECT *mutex, int ms)
         s_running_task->taskctx->timeout = get_tick_count() + ms;
         t_enqueue(&s_sleep_queue, s_running_task); w_enqueue(mutex, s_running_task);
         task_switch_then_interrupt_on(task_schedule(NULL, 0));
-        interrupt_off();
+        return mutex->mutex.onwer == s_running_task ? 0 : -1;
+    } else {
+        mutex->mutex.onwer = s_running_task;
+        interrupt_on();
+        return 0;
     }
-    if (mutex->mutex.onwer) { interrupt_on(); return -1; }
-    mutex->mutex.onwer = s_running_task;
-    interrupt_on();
-    return 0;
 }
