@@ -55,7 +55,7 @@ int      task_join  (KOBJECT *task, uint32_t *exitcode);
 int      task_detach(KOBJECT *task);
 void     task_sleep (int ms);
 
-KOBJECT* mutex_create   (void);
+KOBJECT* mutex_init     (void);
 int      mutex_destroy  (KOBJECT *mutex);
 int      mutex_lock     (KOBJECT *mutex);
 int      mutex_unlock   (KOBJECT *mutex);

@@ -13,7 +13,7 @@ static void* task1_proc(void *arg)
         int ret = mutex_trylock(s_mutex);
         if (ret == 0) {
             printf("task1 mutex try lock ok\n");
-            printf("task 1 counter: %lu\n", *counter += 1);
+            printf("task1 counter: %lu\n", *counter += 1);
             printf("task1 mutex unlock\n");
             mutex_unlock(s_mutex);
         } else {
@@ -31,7 +31,7 @@ static void* task2_proc(void *arg)
         int ret = mutex_timedlock(s_mutex, 1000);
         if (ret == 0) {
             printf("task2 mutex timedlock ok\n");
-            printf("task 2 counter: %lu\n", *counter += 1);
+            printf("task2 counter: %lu\n", *counter += 1);
             printf("task2 mutex unlock\n");
             mutex_unlock(s_mutex);
         } else {
@@ -47,10 +47,11 @@ static void* task3_proc(void *arg)
     while (!s_exit) {
         mutex_lock(s_mutex);
         printf("task3 mutex lock\n");
-        printf("task 3 counter: %lu\n", *counter += 1);
-        task_sleep(1000);
+        printf("task3 counter: %lu\n", *counter += 1);
+        task_sleep(2000);
         printf("task3 mutex unlock\n");
         mutex_unlock(s_mutex);
+        task_sleep(100);
     }
     return (void*)3;
 }
@@ -62,7 +63,7 @@ int main(void)
     uint32_t counter3 = 0;
     uint32_t exitcode = 0;
     task_kernel_init();
-    s_mutex = mutex_create();
+    s_mutex = mutex_init();
     KOBJECT *task1 = task_create(task1_proc, &counter1, 0, 0);
     KOBJECT *task2 = task_create(task2_proc, &counter2, 0, 0);
     KOBJECT *task3 = task_create(task3_proc, &counter3, 0, 0);

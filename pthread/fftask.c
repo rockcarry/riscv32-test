@@ -238,7 +238,7 @@ void task_sleep(int ms)
     task_switch_then_interrupt_on(task_schedule(NULL, 0));
 }
 
-KOBJECT* mutex_create(void)
+KOBJECT* mutex_init(void)
 {
     KOBJECT *mutex = calloc(1, sizeof(KOBJECT));
     if (!mutex) return NULL;
