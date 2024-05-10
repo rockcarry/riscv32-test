@@ -121,6 +121,7 @@ static TASKCTX* task_schedule(KOBJECT *obj, int broadcast)
         s_running_task = obj->w_next != obj ? obj->w_next : s_ready_queue.t_next;
     }
     if (s_running_task == &s_ready_queue) s_running_task = s_idle_task;
+    else *REG_FFVM_CPU_FREQ = 0xFFFFFFFF; // switch to max cpu freq
     w_dequeue(s_running_task); t_dequeue(s_running_task);
     return s_running_task->taskctx;
 }
