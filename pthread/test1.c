@@ -2,81 +2,69 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include "ffvmreg.h"
 #include "fftask.h"
 
-static int      s_exit  = 0;
-static KOBJECT *s_mutex = NULL;
+static int s_test_task_arg = 0;
+static int s_test_task_run = 1;
+static int s_test_task_exit= 0;
+static int s_test_task_join= 0;
+static int s_test_task_main= 1;
+
 static void* task1_proc(void *arg)
 {
-    uint32_t *counter = arg;
-    while (!s_exit) {
-        int ret = mutex_trylock(s_mutex);
-        if (ret == 0) {
-            printf("task1 mutex try lock ok\n");
-            printf("task1 counter: %lu\n", *counter += 1);
-            printf("task1 mutex unlock\n");
-            mutex_unlock(s_mutex);
-        } else {
-            printf("task1 mutex try lock failed\n");
-        }
-        task_sleep(100);
-    }
-    return (void*)1;
-}
+    uint32_t ticks[100];
+    char *hello = arg;
+    int   i, d;
 
-static void* task2_proc(void *arg)
-{
-    uint32_t *counter = arg;
-    while (!s_exit) {
-        int ret = mutex_timedlock(s_mutex, 1000);
-        if (ret == 0) {
-            printf("task2 mutex timedlock ok\n");
-            printf("task2 counter: %lu\n", *counter += 1);
-            printf("task2 mutex unlock\n");
-            mutex_unlock(s_mutex);
-        } else {
-            printf("task2 mutex timedlock failed\n");
-        }
-    }
-    return (void*)2;
-}
+    if (strcmp(hello, "hello fftask !") == 0) s_test_task_arg = 1;
+    printf("%s\n", hello);
 
-static void* task3_proc(void *arg)
-{
-    uint32_t *counter = arg;
-    while (!s_exit) {
-        mutex_lock(s_mutex);
-        printf("task3 mutex lock\n");
-        printf("task3 counter: %lu\n", *counter += 1);
-        task_sleep(2000);
-        printf("task3 mutex unlock\n");
-        mutex_unlock(s_mutex);
-        task_sleep(100);
+    for (i = 0; i < 100; i++) {
+        ticks[i] = *REG_FFVM_MTIMECURL;
+        printf("%d task1, cur_tick: %lu\n", i, ticks[i]);
+        task_sleep(200);
     }
-    return (void*)3;
+
+    for (i = 1; i < 100; i++) {
+        d = abs(ticks[i] - ticks[i - 1] - 200);
+        if (d > 20) { s_test_task_run = 0; break; }
+    }
+
+    return (void*)12345678;
 }
 
 int main(void)
 {
-    uint32_t counter1 = 0;
-    uint32_t counter2 = 0;
-    uint32_t counter3 = 0;
-    uint32_t exitcode = 0;
+    char *hello = "hello fftask !";
+    int   exitcode = 0, d = 0, ret, i;
+    static char *strtab[2] = { "failed", "pass" };
+
+    uint32_t ticks[10];
     task_kernel_init();
-    s_mutex = mutex_init();
-    KOBJECT *task1 = task_create(task1_proc, &counter1, 0, 0);
-    KOBJECT *task2 = task_create(task2_proc, &counter2, 0, 0);
-    KOBJECT *task3 = task_create(task3_proc, &counter3, 0, 0);
-    while (!s_exit) {
-        char cmd[256];
-        scanf("%255s", cmd);
-        printf("cmd: %s\n", cmd);
-        if (strcmp(cmd, "exit") == 0) { s_exit = 1; break; }
+    KOBJECT *task1 = task_create("task1", task1_proc, hello, 0, 0);
+    for (i = 0; i < 10; i++) {
+//      task_kernel_dump("main", "stat", 1);
+        ticks[i] = *REG_FFVM_MTIMECURL;
+        if (i > 0) {
+            d = abs(ticks[i] - ticks[i - 1] - 1000);
+            if (d > 20) s_test_task_main = 0;
+        }
+        printf("%d main task, cur_tick: %lu, diff: %d\n", i, ticks[i], d);
+        task_sleep(1000);
     }
-    task_join(task1, &exitcode); printf("task1 exit: %lu\n", exitcode);
-    task_join(task2, &exitcode); printf("task2 exit: %lu\n", exitcode);
-    task_join(task3, &exitcode); printf("task3 exit: %lu\n", exitcode);
-    mutex_destroy(s_mutex);
+    ret = task_join(task1, (uint32_t*)&exitcode);
     task_kernel_exit();
+
+    printf("exitcode: %d\n", exitcode);
+    printf("join ret: %d\n", ret);
+    s_test_task_exit = exitcode == 12345678;
+    s_test_task_join = ret == 0;
+
+    printf("s_test_task_arg : %s\n", strtab[s_test_task_arg ]);
+    printf("s_test_task_run : %s\n", strtab[s_test_task_run ]);
+    printf("s_test_task_exit: %s\n", strtab[s_test_task_exit]);
+    printf("s_test_task_join: %s\n", strtab[s_test_task_join]);
+    printf("s_test_task_main: %s\n", strtab[s_test_task_main]);
     return 0;
 }

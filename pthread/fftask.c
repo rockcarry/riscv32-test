@@ -36,7 +36,8 @@ static void timer_interrupt_init(void)
     *REG_FFVM_MTIMECMPH = mtimecmp >> 32;
     s_old_mtvec = csr_read(RISCV_CSR_MTVEC);
     csr_write(RISCV_CSR_MTVEC, (uint32_t)task_timer_isr); // setup timer isr
-    csr_setbits(RISCV_CSR_MIE, (1 << 7)); // enable timer interrupt
+    csr_setbits(RISCV_CSR_MIE    , (1 << 7)); // enable timer interrupt
+    csr_setbits(RISCV_CSR_MSTATUS, (1 << 7)); // set mstatus:mip to 1
 }
 
 static void timer_interrupt_next(int timeout)
@@ -51,7 +52,8 @@ static void timer_interrupt_exit(void)
     *REG_FFVM_MTIMECMPL = 0xFFFFFFFF;
     *REG_FFVM_MTIMECMPH = 0xFFFFFFFF;
     csr_write(RISCV_CSR_MTVEC, s_old_mtvec); // restore old timer isr
-    csr_clrbits(RISCV_CSR_MIE, (1 << 7)); // disable timer interrupt
+    csr_clrbits(RISCV_CSR_MIE    , (1 << 7)); // disable timer interrupt
+    csr_clrbits(RISCV_CSR_MSTATUS, (1 << 7)); // set mstatus:mip to 0
 }
 
 static void interrupt_on (void) { csr_setbits(RISCV_CSR_MSTATUS, (1 << 3)); }
@@ -59,9 +61,15 @@ static void interrupt_off(void) { csr_clrbits(RISCV_CSR_MSTATUS, (1 << 3)); }
 
 static KOBJECT  s_ready_queue  = {};
 static KOBJECT  s_sleep_queue  = {};
+static KOBJECT  s_objct_queue  = {};
 static KOBJECT *s_main_task    = NULL;
 static KOBJECT *s_idle_task    = NULL;
 static KOBJECT *s_running_task = NULL;
+
+static uint32_t s_stat_intr_count = 0;
+static uint32_t s_stat_start_tick = 0;
+static uint32_t s_stat_idle_start = 0;
+static uint32_t s_stat_idle_total = 0;
 
 static uint32_t get_tick_count(void)
 {
@@ -70,8 +78,12 @@ static uint32_t get_tick_count(void)
 
 static void t_enqueue(KOBJECT *queue, KOBJECT *obj)
 {
-    obj->t_prev = queue->t_prev;
+#ifdef DEBUG
+    if      (queue == &s_ready_queue) obj->taskctx->last_ready_tick = get_tick_count();
+    else if (queue == &s_sleep_queue) obj->taskctx->last_sleep_tick = get_tick_count();
+#endif
     obj->t_next = queue;
+    obj->t_prev = queue->t_prev;
     queue->t_prev->t_next = obj;
     queue->t_prev = obj;
 }
@@ -85,8 +97,11 @@ static void t_dequeue(KOBJECT *obj)
 
 static void w_enqueue(KOBJECT *queue, KOBJECT *obj)
 {
-    obj->w_prev = queue->w_prev;
+#ifdef DEBUG
+    obj->taskctx->last_wait_tick = get_tick_count();
+#endif
     obj->w_next = queue;
+    obj->w_prev = queue->w_prev;
     queue->w_prev->w_next = obj;
     queue->w_prev = obj;
 }
@@ -100,17 +115,15 @@ static void w_dequeue(KOBJECT *obj)
 
 static void s_insert(KOBJECT *obj)
 {
-    KOBJECT *k, *t;
+    KOBJECT *k;
     obj->taskctx->flags &= ~FFTASK_TASK_TIMEOUT;
-    for (k = s_sleep_queue.t_next; k != &s_sleep_queue && (t = k); k = k->t_next) {
-        if (obj->taskctx->timeout < t->taskctx->timeout) {
-            obj->t_prev = t->t_prev;
-            obj->t_next = t;
-            t->t_prev->t_next = obj;
-            t->t_prev = obj;
-            break;
-        }
+    for (k = s_sleep_queue.t_next; k != &s_sleep_queue; k = k->t_next) {
+        if ((int32_t)obj->taskctx->timeout - (int32_t)k->taskctx->timeout < 0) break;
     }
+    obj->t_next = k;
+    obj->t_prev = k->t_prev;
+    k->t_prev->t_next = obj;
+    k->t_prev = obj;
 }
 
 static void* idle_proc(void *arg)
@@ -122,42 +135,61 @@ static void* idle_proc(void *arg)
 static TASKCTX* task_schedule(KOBJECT *obj, int arg)
 {
     uint32_t tick = get_tick_count();
-    int32_t  next;
-    KOBJECT *k, *t;
+    KOBJECT *prev_task = s_running_task, *k, *t;
+    int32_t  next = 0x3fffffff;
+
+#ifdef DEBUG
+    s_running_task->taskctx->total_run_tick += tick - s_running_task->taskctx->last_run_tick;
+#endif
+
     if (!obj) {
-        for (k = s_sleep_queue.t_next; k != &s_sleep_queue && (int32_t)tick - (int32_t)k->taskctx->timeout >= 0 && (t = k); k = k->t_next) {
-            t->taskctx->flags |= FFTASK_TASK_TIMEOUT; w_dequeue(t); t_dequeue(t); t_enqueue(&s_ready_queue, t);
+        for (k = s_sleep_queue.t_next; k != &s_sleep_queue && (int32_t)tick - (int32_t)k->taskctx->timeout >= 0; ) {
+            t = k; t->taskctx->flags |= FFTASK_TASK_TIMEOUT; k = k->t_next;
+            w_dequeue(t); t_dequeue(t); t_enqueue(&s_ready_queue, t);
         }
         s_running_task = s_ready_queue.t_next;
     } else if (obj->type == FFTASK_KOBJ_TASK) {
         s_running_task = obj->task.joiner ? obj->task.joiner : s_ready_queue.t_next;
     } else if (obj->type == FFTASK_KOBJ_MUTEX) {
-        obj->mutex.onwer = obj->w_next != obj ? obj->w_next : NULL;
+        obj->mutex.owner = obj->w_next != obj ? obj->w_next : NULL;
         s_running_task   = obj->w_next != obj ? obj->w_next : s_ready_queue.t_next;
     } else if (obj->type == FFTASK_KOBJ_COND) {
         s_running_task   = obj->w_next != obj ? obj->w_next : s_ready_queue.t_next;
-        if (arg) { // broadcase
-            for (k = obj->w_next->w_next; k != obj && (t = k); k = k->w_next) { w_dequeue(t); t_dequeue(t); t_enqueue(&s_ready_queue, t); }
+        if (arg) { // broadcast
+            for (k = obj->w_next->w_next; k != obj; ) { t = k; k = k->w_next; w_dequeue(t); t_dequeue(t); t_enqueue(&s_ready_queue, t); }
         }
     } else if (obj->type == FFTASK_KOBJ_SEM) {
         if (obj->w_next != obj) {
             s_running_task = obj->w_next;
-            for (arg--, k = obj->w_next->w_next; k != obj && arg && (t = k); k = k->w_next, arg--) { w_dequeue(t); t_dequeue(t); t_enqueue(&s_ready_queue, t); }
+            for (arg--, k = obj->w_next->w_next; k != obj && arg; arg--) { t = k; k = k->w_next; w_dequeue(t); t_dequeue(t); t_enqueue(&s_ready_queue, t); }
         } else {
             s_running_task = s_ready_queue.t_next;
         }
         obj->sem.val += arg;
     }
-    if (s_running_task == &s_ready_queue) {
-        s_running_task = s_idle_task;
-        next = (int32_t)s_sleep_queue.t_next - (int32_t)get_tick_count();
-        *REG_FFVM_CPU_FREQ = 100 * 1000; // 100KHz cpu freq
-        timer_interrupt_next(next > 1 ? next : 1);
-    } else {
-        *REG_FFVM_CPU_FREQ = 0xFFFFFFFF; // switch to max cpu freq
-        timer_interrupt_next(20); // next 20ms trigger timer interrupt
-    }
+
+    if (s_running_task == &s_ready_queue) s_running_task = s_idle_task;
     w_dequeue(s_running_task); t_dequeue(s_running_task);
+
+    if (s_running_task != prev_task) {
+        if (prev_task == s_idle_task) { // if prev task is idle task
+            *REG_FFVM_CPU_FREQ = 0xFFFFFFFF;  // switch to max cpu freq
+            s_stat_idle_total += tick - s_stat_idle_start;
+        } else if (s_running_task == s_idle_task) { // if next task is idle task
+            *REG_FFVM_CPU_FREQ = 1000 * 1000; // 1MHz cpu freq
+            s_stat_idle_start  = tick;
+        }
+    }
+
+    if (s_ready_queue.t_next != &s_ready_queue) next = 20;
+    else if (s_sleep_queue.t_next != &s_sleep_queue) {
+        next = (int32_t)s_sleep_queue.t_next->taskctx->timeout - (int32_t)get_tick_count();
+    }
+    timer_interrupt_next(next);
+
+#ifdef DEBUG
+    s_running_task->taskctx->last_run_tick = tick;
+#endif
     return s_running_task->taskctx;
 }
 
@@ -176,13 +208,13 @@ static void task_entry(KOBJECT *task)
     task_switch_then_interrupt_on(taskctx);
 }
 
-static KOBJECT* task_create_internal(void* (*taskproc)(void*), void *taskarg, int stacksize)
+static KOBJECT* task_create_internal(char *name, void* (*taskproc)(void*), void *taskarg, int stacksize)
 {    KOBJECT *obj = malloc(sizeof(KOBJECT) + sizeof(TASKCTX) + stacksize);
     if (!obj) return NULL;
     memset(obj, 0, sizeof(KOBJECT) + sizeof(TASKCTX));
+    if (name) strncpy(obj->name, name, sizeof(obj->name) - 1);
     register uint32_t gp asm("gp");
-    obj->t_next = obj->t_prev = obj;
-    obj->w_next = obj->w_prev = obj;
+    obj->t_next = obj->t_prev = obj->w_next = obj->w_prev = obj;
     obj->taskctx           = (TASKCTX*)(obj + 1);
     obj->taskctx->pc       = (uint32_t)task_entry;
     obj->taskctx->ra       = (uint32_t)task_entry;
@@ -202,12 +234,14 @@ void task_kernel_init(void)
 
     s_ready_queue.t_next = s_ready_queue.t_prev = &s_ready_queue;
     s_sleep_queue.t_next = s_sleep_queue.t_prev = &s_sleep_queue;
+    s_objct_queue.t_next = s_objct_queue.t_prev = &s_objct_queue;
 
-    s_idle_task    = task_create_internal(idle_proc, NULL, 256);
-    s_main_task    = s_running_task = task_create_internal(NULL, NULL, 0);
+    s_idle_task    = task_create_internal("idle", idle_proc, NULL, 256);
+    s_main_task    = s_running_task = task_create_internal("main", NULL, NULL, 0);
     s_old_mscratch = csr_read(RISCV_CSR_MSCRATCH);
     csr_write(RISCV_CSR_MSCRATCH, (uint32_t)s_main_task->taskctx);
 
+    s_stat_start_tick = get_tick_count();
     interrupt_on();
 }
 
@@ -218,22 +252,117 @@ void task_kernel_exit(void)
     csr_write(RISCV_CSR_MSCRATCH, s_old_mscratch);
     for (obj = s_ready_queue.t_next; obj != &s_ready_queue; ) { tmp = obj; obj = obj->t_next; t_dequeue(tmp); free(tmp); }
     for (obj = s_sleep_queue.t_next; obj != &s_sleep_queue; ) { tmp = obj; obj = obj->t_next; t_dequeue(tmp); free(tmp); }
-    s_main_task = s_idle_task = s_running_task = NULL;
+    for (obj = s_objct_queue.t_next; obj != &s_objct_queue; ) { tmp = obj; obj = obj->t_next; t_dequeue(tmp); free(tmp); }
+    free(s_running_task); s_main_task = s_idle_task = s_running_task = NULL;
     timer_interrupt_exit();
     interrupt_on();
 }
 
+static void kobject_dump(KOBJECT *obj)
+{
+    static char *str_tab_type[] = { "task", "mutex", "cond", "sem" };
+    printf("kobject: %p, type: %d, %s, name: %s\n", obj, obj->type, str_tab_type[obj->type % 4], obj->name);
+    switch (obj->type) {
+    case FFTASK_KOBJ_TASK:
+        printf("- joiner  : %p\n" , obj->task.joiner);
+        printf("- flags   : %lx\n", obj->taskctx->flags   );
+        printf("- timeout : %lu\n", obj->taskctx->timeout );
+        printf("- exitcode: %lu\n", obj->taskctx->exitcode);
+        printf("- taskproc: %p\n" , obj->taskctx->taskproc);
+        printf("- taskarg : %p\n" , obj->taskctx->taskarg );
+#ifdef DEBUG
+        printf("- last_run_tick  : %lu\n", obj->taskctx->last_run_tick  );
+        printf("- last_ready_tick: %lu\n", obj->taskctx->last_ready_tick);
+        printf("- last_sleep_tick: %lu\n", obj->taskctx->last_sleep_tick);
+        printf("- last_wait_tick : %lu\n", obj->taskctx->last_wait_tick );
+        printf("- total_run_tick : %lu\n", obj->taskctx->total_run_tick );
+#endif
+        break;
+    case FFTASK_KOBJ_MUTEX:
+        printf("- owner: %p\n", obj->mutex.owner);
+        break;
+    case FFTASK_KOBJ_SEM:
+        printf("- value: %lu\n", obj->sem.val);
+        break;
+    }
+    printf("\n");
+}
+
+void task_kernel_dump(char *title, char *type, int flag)
+{
+    if (flag) interrupt_off();
+    uint32_t tick  = get_tick_count();
+    uint32_t total = tick - s_stat_start_tick + 1;
+    KOBJECT *obj   = NULL;
+
+    printf("+--------- %s ---------+\n", title);
+    if (strstr(type, "0x") == type) {
+        uint32_t addr = 0;
+        sscanf(type, "%lx", &addr);
+        kobject_dump((KOBJECT*)addr);
+        goto done;
+    }
+
+    if (strcmp(type, "all") == 0) type = "running + main + idle + stat + ready + sleep + object";
+
+    if (strstr(type, "running")) {
+        printf("current tick: %lu\n", tick);
+        printf("running task:\n");
+        kobject_dump(s_running_task);
+    }
+    if (strstr(type, "main")) {
+        printf("main task:\n");
+        kobject_dump(s_main_task);
+    }
+    if (strstr(type, "idle")) {
+        printf("idle task:\n");
+        kobject_dump(s_idle_task);
+    }
+
+    if (strstr(type, "stat")) {
+        printf("s_stat_intr_count: %lu\n", s_stat_intr_count);
+        printf("s_stat_start_tick: %lu\n", s_stat_start_tick);
+        printf("s_stat_tick_total: %lu\n", total);
+        printf("s_stat_idle_start: %lu\n", s_stat_idle_start);
+        printf("s_stat_idle_total: %lu\n", s_stat_idle_total);
+        printf("s_stat_cpu_usage : %ld\n", 100 * (total - s_stat_idle_total) / total);
+        printf("\n");
+        s_stat_start_tick = get_tick_count();
+        s_stat_idle_total = 0;
+    }
+
+    if (strstr(type, "ready" )) {
+        printf("ready queue :\n");
+        for (obj = s_ready_queue.t_next; obj != &s_ready_queue; obj = obj->t_next) kobject_dump(obj);
+        printf("\n");
+    }
+    if (strstr(type, "sleep" )) {
+        printf("sleep queue :\n");
+        for (obj = s_sleep_queue.t_next; obj != &s_sleep_queue; obj = obj->t_next) kobject_dump(obj);
+        printf("\n");
+    }
+    if (strstr(type, "object")) {
+        printf("object queue:\n");
+        for (obj = s_objct_queue.t_next; obj != &s_objct_queue; obj = obj->t_next) kobject_dump(obj);
+        printf("\n");
+    }
+
+done:
+    if (flag) interrupt_on();
+}
+
 TASKCTX* task_timer_schedule(void)
 {
-    t_enqueue(&s_ready_queue, s_running_task);
+    s_stat_intr_count++;
+    if (s_running_task != s_idle_task) t_enqueue(&s_ready_queue, s_running_task);
     return task_schedule(NULL, 0);
 }
 
-KOBJECT* task_create(void* (*taskfunc)(void*), void *taskarg, int stacksize, int params)
+KOBJECT* task_create(char *name, void* (*taskfunc)(void*), void *taskarg, int stacksize, int params)
 {
     if (!taskfunc) return NULL;
     interrupt_off();
-    KOBJECT *obj = task_create_internal(taskfunc, taskarg, stacksize ? stacksize : (64 * 1024));
+    KOBJECT *obj = task_create_internal(name, taskfunc, taskarg, stacksize ? stacksize : (64 * 1024));
     if (obj) t_enqueue(&s_ready_queue, obj);
     interrupt_on();
     return obj;
@@ -270,20 +399,24 @@ void task_sleep(int32_t ms)
     task_switch_then_interrupt_on(task_schedule(NULL, 0));
 }
 
-KOBJECT* mutex_init(void)
+KOBJECT* task_self(void) { return s_running_task; }
+
+KOBJECT* mutex_init(char *name)
 {
     KOBJECT *mutex = calloc(1, sizeof(KOBJECT));
     if (!mutex) return NULL;
+    if (name) strncpy(mutex->name, name, sizeof(mutex->name) - 1);
     mutex->type = FFTASK_KOBJ_MUTEX;
-    mutex->w_next = mutex->w_prev = mutex;
+    mutex->t_next = mutex->t_prev = mutex->w_next = mutex->w_prev = mutex;
+    t_enqueue(&s_objct_queue, mutex);
     return mutex;
 }
 
 int mutex_destroy(KOBJECT *mutex)
 {
     interrupt_off();
-    if (!mutex || mutex->type != FFTASK_KOBJ_MUTEX || mutex->mutex.onwer || mutex->w_next != mutex) { interrupt_on(); return -1; }
-    free(mutex);
+    if (!mutex || mutex->type != FFTASK_KOBJ_MUTEX || mutex->mutex.owner || mutex->w_next != mutex) { interrupt_on(); return -1; }
+    t_dequeue(mutex); free(mutex);
     interrupt_on();
     return 0;
 }
@@ -292,11 +425,11 @@ int mutex_lock(KOBJECT *mutex)
 {
     interrupt_off();
     if (!mutex || mutex->type != FFTASK_KOBJ_MUTEX) { interrupt_on(); return -1; }
-    if (mutex->mutex.onwer) {
+    if (mutex->mutex.owner) {
         w_enqueue(mutex, s_running_task);
         task_switch_then_interrupt_on(task_schedule(NULL, 0));
     } else {
-        mutex->mutex.onwer = s_running_task;
+        mutex->mutex.owner = s_running_task;
         interrupt_on();
     }
     return 0;
@@ -305,17 +438,22 @@ int mutex_lock(KOBJECT *mutex)
 int mutex_unlock(KOBJECT *mutex)
 {
     interrupt_off();
-    if (!mutex || mutex->type != FFTASK_KOBJ_MUTEX || mutex->mutex.onwer != s_running_task || mutex->w_next == mutex) { interrupt_on(); return -1; }
-    t_enqueue(&s_ready_queue, s_running_task);
-    task_switch_then_interrupt_on(task_schedule(mutex, 0));
+    if (!mutex || mutex->type != FFTASK_KOBJ_MUTEX || mutex->mutex.owner != s_running_task) { interrupt_on(); return -1; }
+    if (mutex->w_next != mutex) {
+        t_enqueue(&s_ready_queue, s_running_task);
+        task_switch_then_interrupt_on(task_schedule(mutex, 0));
+    } else {
+        mutex->mutex.owner = NULL;
+        interrupt_on();
+    }
     return 0;
 }
 
 int mutex_trylock(KOBJECT *mutex)
 {
     interrupt_off();
-    if (!mutex || mutex->type != FFTASK_KOBJ_MUTEX || mutex->mutex.onwer) { interrupt_on(); return -1; }
-    mutex->mutex.onwer = s_running_task;
+    if (!mutex || mutex->type != FFTASK_KOBJ_MUTEX || mutex->mutex.owner) { interrupt_on(); return -1; }
+    mutex->mutex.owner = s_running_task;
     interrupt_on();
     return 0;
 }
@@ -324,24 +462,26 @@ int mutex_timedlock(KOBJECT *mutex, int32_t ms)
 {
     interrupt_off();
     if (!mutex || mutex->type != FFTASK_KOBJ_MUTEX) { interrupt_on(); return -1; }
-    if (mutex->mutex.onwer) {
+    if (mutex->mutex.owner) {
         s_running_task->taskctx->timeout = get_tick_count() + ms;
         s_insert(s_running_task); w_enqueue(mutex, s_running_task);
         task_switch_then_interrupt_on(task_schedule(NULL, 0));
-        return mutex->mutex.onwer == s_running_task ? 0 : -1;
+        return mutex->mutex.owner == s_running_task ? 0 : -1;
     } else {
-        mutex->mutex.onwer = s_running_task;
+        mutex->mutex.owner = s_running_task;
         interrupt_on();
         return 0;
     }
 }
 
-KOBJECT* cond_init(void)
+KOBJECT* cond_init(char *name)
 {
     KOBJECT *cond = calloc(1, sizeof(KOBJECT));
     if (!cond) return NULL;
+    if (name) strncpy(cond->name, name, sizeof(cond->name) - 1);
     cond->type = FFTASK_KOBJ_COND;
-    cond->w_next = cond->w_prev = cond;
+    cond->t_next = cond->t_prev = cond->w_next = cond->w_prev = cond;
+    t_enqueue(&s_objct_queue, cond);
     return cond;
 }
 
@@ -349,7 +489,7 @@ int cond_destroy(KOBJECT *cond)
 {
     interrupt_off();
     if (!cond || cond->type != FFTASK_KOBJ_COND || cond->w_next != cond) { interrupt_on(); return -1; }
-    free(cond);
+    t_dequeue(cond); free(cond);
     interrupt_on();
     return 0;
 }
@@ -357,7 +497,7 @@ int cond_destroy(KOBJECT *cond)
 int cond_wait(KOBJECT *cond, KOBJECT *mutex)
 {
     interrupt_off();
-    if (!cond || cond->type != FFTASK_KOBJ_COND || mutex || mutex->type != FFTASK_KOBJ_MUTEX) { interrupt_on(); return -1; }
+    if (!cond || cond->type != FFTASK_KOBJ_COND || !mutex || mutex->type != FFTASK_KOBJ_MUTEX) { interrupt_on(); return -1; }
     w_enqueue(cond, s_running_task);
     task_switch_then_interrupt_on(task_schedule(mutex, 0));
     return 0;
@@ -366,7 +506,7 @@ int cond_wait(KOBJECT *cond, KOBJECT *mutex)
 int cond_timedwait(KOBJECT *cond, KOBJECT *mutex, int32_t ms)
 {
     interrupt_off();
-    if (!cond || cond->type != FFTASK_KOBJ_COND || mutex || mutex->type != FFTASK_KOBJ_MUTEX) { interrupt_on(); return -1; }
+    if (!cond || cond->type != FFTASK_KOBJ_COND || !mutex || mutex->type != FFTASK_KOBJ_MUTEX) { interrupt_on(); return -1; }
     s_running_task->taskctx->timeout = get_tick_count() + ms;
     s_insert(s_running_task); w_enqueue(cond, s_running_task);
     task_switch_then_interrupt_on(task_schedule(mutex, 0));
@@ -382,13 +522,15 @@ int cond_signal(KOBJECT *cond, int broadcast)
     return 0;
 }
 
-KOBJECT* semaphore_init(int val)
+KOBJECT* semaphore_init(char *name, int val)
 {
     KOBJECT *sem = calloc(1, sizeof(KOBJECT));
     if (!sem) return NULL;
+    if (name) strncpy(sem->name, name, sizeof(sem->name) - 1);
     sem->type    = FFTASK_KOBJ_SEM;
-    sem->w_next  = sem->w_prev = sem;
     sem->sem.val = val;
+    sem->t_next  = sem->t_prev = sem->w_next = sem->w_prev = sem;
+    t_enqueue(&s_objct_queue, sem);
     return sem;
 }
 
@@ -396,7 +538,7 @@ int semaphore_destroy(KOBJECT *sem)
 {
     interrupt_off();
     if (!sem || sem->type != FFTASK_KOBJ_SEM || sem->w_next != sem) { interrupt_on(); return -1; }
-    free(sem);
+    t_dequeue(sem); free(sem);
     interrupt_on();
     return 0;
 }
@@ -413,7 +555,7 @@ int semaphore_trywait(KOBJECT *sem)
 int semaphore_wait(KOBJECT *sem)
 {
     interrupt_off();
-    if (!sem || sem->type != FFTASK_KOBJ_MUTEX) { interrupt_on(); return -1; }
+    if (!sem || sem->type != FFTASK_KOBJ_SEM) { interrupt_on(); return -1; }
     if (sem->sem.val == 0) {
         w_enqueue(sem, s_running_task);
         task_switch_then_interrupt_on(task_schedule(NULL, 0));
@@ -427,7 +569,7 @@ int semaphore_wait(KOBJECT *sem)
 int semaphore_timedwait(KOBJECT *sem, int32_t ms)
 {
     interrupt_off();
-    if (!sem || sem->type != FFTASK_KOBJ_MUTEX) { interrupt_on(); return -1; }
+    if (!sem || sem->type != FFTASK_KOBJ_SEM) { interrupt_on(); return -1; }
     if (sem->sem.val == 0) {
         s_running_task->taskctx->timeout = get_tick_count() + ms;
         s_insert(s_running_task); w_enqueue(sem, s_running_task);
@@ -443,16 +585,21 @@ int semaphore_timedwait(KOBJECT *sem, int32_t ms)
 int semaphore_post(KOBJECT *sem, int n)
 {
     interrupt_off();
-    if (!sem || sem->type != FFTASK_KOBJ_MUTEX || n <= 0) { interrupt_on(); return -1; }
-    t_enqueue(&s_ready_queue, s_running_task);
-    task_switch_then_interrupt_on(task_schedule(sem, n));
+    if (!sem || sem->type != FFTASK_KOBJ_SEM || n <= 0) { interrupt_on(); return -1; }
+    if (sem->w_next != sem) {
+        t_enqueue(&s_ready_queue, s_running_task);
+        task_switch_then_interrupt_on(task_schedule(sem, n));
+    } else {
+        sem->sem.val += n;
+        interrupt_on();
+    }
     return 0;
 }
 
 int semaphore_getvalue(KOBJECT *sem, int *val)
 {
     interrupt_off();
-    if (!sem || sem->type != FFTASK_KOBJ_MUTEX) { interrupt_on(); return -1; }
+    if (!sem || sem->type != FFTASK_KOBJ_SEM) { interrupt_on(); return -1; }
     if (val) *val = sem->sem.val;
     interrupt_on();
     return 0;

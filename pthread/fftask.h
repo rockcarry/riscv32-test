@@ -19,6 +19,14 @@ typedef struct {
     uint32_t timeout, exitcode;
     void*  (*taskproc)(void*);
     void    *taskarg;
+
+#ifdef DEBUG
+    uint32_t last_run_tick;
+    uint32_t last_ready_tick;
+    uint32_t last_sleep_tick;
+    uint32_t last_wait_tick;
+    uint32_t total_run_tick;
+#endif
 } TASKCTX;
 
 typedef struct tagKOBJECT {
@@ -30,7 +38,7 @@ typedef struct tagKOBJECT {
     #define FFTASK_KOBJ_COND  2
     #define FFTASK_KOBJ_SEM   3
     int      type;
-
+    char     name[8];
     TASKCTX *taskctx;
 
     union {
@@ -38,7 +46,7 @@ typedef struct tagKOBJECT {
             struct tagKOBJECT *joiner;
         } task;
         struct {
-            struct tagKOBJECT *onwer;
+            struct tagKOBJECT *owner;
         } mutex;
         struct {
             uint32_t val;
@@ -52,26 +60,28 @@ void     task_switch_then_interrupt_on(TASKCTX *taskctx);
 
 void     task_kernel_init(void);
 void     task_kernel_exit(void);
+void     task_kernel_dump(char *title, char *type, int flag);
 
-KOBJECT* task_create(void* (*taskproc)(void*), void *taskarg, int stacksize, int params);
+KOBJECT* task_create(char *name, void* (*taskproc)(void*), void *taskarg, int stacksize, int params);
 int      task_join  (KOBJECT *task, uint32_t *exitcode);
 int      task_detach(KOBJECT *task);
 void     task_sleep (int32_t ms);
+KOBJECT* task_self  (void);
 
-KOBJECT* mutex_init     (void);
+KOBJECT* mutex_init     (char *name);
 int      mutex_destroy  (KOBJECT *mutex);
 int      mutex_lock     (KOBJECT *mutex);
 int      mutex_unlock   (KOBJECT *mutex);
 int      mutex_trylock  (KOBJECT *mutex);
 int      mutex_timedlock(KOBJECT *mutex, int32_t ms);
 
-KOBJECT* cond_init(void);
-int      cond_destroy(KOBJECT *cond);
-int      cond_wait(KOBJECT *cond, KOBJECT *mutex);
-int      cond_timedwait(KOBJECT *cond, KOBJECT *mutex, int32_t ms);
-int      cond_signal(KOBJECT *cond, int broadcast);
+KOBJECT* cond_init      (char *name);
+int      cond_destroy   (KOBJECT *cond);
+int      cond_wait      (KOBJECT *cond, KOBJECT *mutex);
+int      cond_timedwait (KOBJECT *cond, KOBJECT *mutex, int32_t ms);
+int      cond_signal    (KOBJECT *cond, int broadcast);
 
-KOBJECT* semaphore_init(int val);
+KOBJECT* semaphore_init(char *name, int val);
 int      semaphore_destroy(KOBJECT *sem);
 int      semaphore_trywait(KOBJECT *sem);
 int      semaphore_wait(KOBJECT *sem);
