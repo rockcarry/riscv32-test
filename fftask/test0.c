@@ -8,7 +8,7 @@
 int main(void)
 {
     uint32_t ticks[10];
-    int      i, d, pass = 1;
+    int      i, d = 0, pass = 1;
     task_kernel_init();
     for (i = 0; i < 10; i++) {
 //      task_kernel_dump("main", "all", 1);

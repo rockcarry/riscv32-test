@@ -12,10 +12,6 @@ typedef struct {
     uint32_t s2, s3, s4, s5, s6, s7, s8, s9, s10, s11;
     uint32_t t3, t4, t5, t6;
 
-    #define FFTASK_TASK_DEAD    (1 << 0)
-    #define FFTASK_TASK_DETACH  (1 << 1)
-    #define FFTASK_TASK_TIMEOUT (1 << 2)
-    uint32_t flags;
     uint32_t timeout, exitcode;
     void*  (*taskproc)(void*);
     void    *taskarg;
@@ -38,6 +34,13 @@ typedef struct tagKOBJECT {
     #define FFTASK_KOBJ_COND  2
     #define FFTASK_KOBJ_SEM   3
     int      type;
+
+    #define FFTASK_TASK_DEAD    (1 << 0)
+    #define FFTASK_TASK_DETACH  (1 << 1)
+    #define FFTASK_TASK_TIMEOUT (1 << 2)
+    #define FFTASK_RESERVED     (1 << 3)
+    uint32_t flags;
+
     char     name[8];
     TASKCTX *taskctx;
 
@@ -62,7 +65,8 @@ void     task_kernel_init(void);
 void     task_kernel_exit(void);
 void     task_kernel_dump(char *title, char *type, int flag);
 
-KOBJECT* task_create(char *name, void* (*taskproc)(void*), void *taskarg, int stacksize, int params);
+#define FFTASK_TASK_CREATE_DETACH (1 << 3)
+KOBJECT* task_create(char *name, void* (*taskproc)(void*), void *taskarg, int stacksize, int flags);
 int      task_join  (KOBJECT *task, uint32_t *exitcode);
 int      task_detach(KOBJECT *task);
 void     task_sleep (int32_t ms);
@@ -81,12 +85,12 @@ int      cond_wait      (KOBJECT *cond, KOBJECT *mutex);
 int      cond_timedwait (KOBJECT *cond, KOBJECT *mutex, int32_t ms);
 int      cond_signal    (KOBJECT *cond, int broadcast);
 
-KOBJECT* semaphore_init(char *name, int val);
-int      semaphore_destroy(KOBJECT *sem);
-int      semaphore_trywait(KOBJECT *sem);
-int      semaphore_wait(KOBJECT *sem);
+KOBJECT* semaphore_init     (char *name, int val);
+int      semaphore_destroy  (KOBJECT *sem);
+int      semaphore_trywait  (KOBJECT *sem);
+int      semaphore_wait     (KOBJECT *sem);
 int      semaphore_timedwait(KOBJECT *sem, int32_t ms);
-int      semaphore_post(KOBJECT *sem, int n);
-int      semaphore_getvalue(KOBJECT *sem, int *val);
+int      semaphore_post     (KOBJECT *sem, int n);
+int      semaphore_getvalue (KOBJECT *sem, int *val);
 
 #endif
