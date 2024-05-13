@@ -35,10 +35,10 @@ typedef struct tagKOBJECT {
     #define FFTASK_KOBJ_SEM   3
     int      type;
 
-    #define FFTASK_TASK_DEAD    (1 << 0)
-    #define FFTASK_TASK_DETACH  (1 << 1)
-    #define FFTASK_TASK_TIMEOUT (1 << 2)
-    #define FFTASK_RESERVED     (1 << 3)
+    #define FFTASK_TASK_DEAD      (1 << 0)
+    #define FFTASK_TASK_DETACH    (1 << 1)
+    #define FFTASK_TASK_TIMEOUT   (1 << 2)
+    #define FFTASK_MONOTONIC_TIME (1 << 3)
     uint32_t flags;
 
     char     name[8];

@@ -13,6 +13,8 @@ typedef unsigned pthread_mutexattr_t;
 typedef unsigned pthread_condattr_t;
 
 typedef struct {
+    #define PTHREAD_CREATE_JOINABLE  0
+    #define PTHREAD_CREATE_DETACHED (1 << 3)
     int detachstate;
     int stacksize;
 } pthread_attr_t;
