@@ -14,17 +14,16 @@ static char g_all_bricks[7][4][4] = {
     { { 0x6C, 0x00, 3, 2 }, { 0x8C, 0x40, 2, 3 }, { 0x6C, 0x00, 3, 2 }, { 0x8C, 0x40, 2, 3 } }, // Z'
 };
 
-static void draw_game(int board[20][10], char curbricks[2], int curx, int cury,
-                      char nextbricks[2], int level, int score, int lines, int history, int gameover)
+static void draw_game(int board[20][10], char curbricks[2], int curx, int cury, char nextbricks[2], int level, int score, int lines, int history, int gameover)
 {
     int  i, j, c;
     gotoxy(0, 0);
-    for (i=0; i<20; i++) {
-        for (j=0; j<10; j++) {
+    for (i = 0; i < 20; i++) {
+        for (j = 0; j < 10; j++) {
             c = board[i][j] == 1 ? 'B' : board[i][j] == 2 ? 'x' : '.';
-            if (j>=curx && j<curx+4 && i>=cury && i<cury+4) {
+            if (j >= curx && j < curx + 4 && i >= cury && i < cury + 4) {
                 int tx = j - curx, ty = i - cury;
-                if (curbricks[ty / 2] & (1 << (3 - tx + ((ty&1) ? 0 : 4)))) {
+                if (curbricks[ty / 2] & (1 << (3 - tx + ((ty & 1) ? 0 : 4)))) {
                     c = 'B';
                 }
             }
@@ -36,16 +35,16 @@ static void draw_game(int board[20][10], char curbricks[2], int curx, int cury,
         case 9 : printf(" score  : %d", score  ); break;
         case 11: printf(" lines  : %d", lines  ); break;
         case 13: printf(" history: %d", history); break;
-        case 15: printf("%s", gameover ? " game over !" : ""); break;
+        case 15: printf("%s", gameover ? " game over !"       : ""); break;
         case 16: printf("%s", gameover ? " press R to again." : ""); break;
         case 18: printf(" ffbricks v1.0.0"); break;
         case 19: printf(" writen by chenk"); break;
         }
         if (i >= 2 && i <= 5) {
             printf(" ");
-            for (j=0; j<4; j++) {
+            for (j = 0; j < 4; j++) {
                 int tx = j, ty = i - 2;
-                printf("%c ", nextbricks[ty / 2] & (1 << (3 - tx + ((ty&1) ? 0 : 4))) ? 'B' : ' ');
+                printf("%c ", nextbricks[ty / 2] & (1 << (3 - tx + ((ty & 1) ? 0 : 4))) ? 'B' : ' ');
             }
         }
         printf("\n");
@@ -56,12 +55,12 @@ static void draw_game(int board[20][10], char curbricks[2], int curx, int cury,
 
 static int check_collision(int board[20][10], char bricks[2], int curx, int cury)
 {
-    int i, j;
-    for (i=0; i<20; i++) {
-        for (j=0; j<10; j++) {
-            if (j>=curx && j<curx+4 && i>=cury && i<cury+4) {
+    int  i, j;
+    for (i = 0; i < 20; i++) {
+        for (j = 0; j < 10; j++) {
+            if (j >= curx && j < curx + 4 && i >= cury && i < cury + 4) {
                 int tx = j - curx, ty = i - cury;
-                if (board[i][j] && (bricks[ty / 2] & (1 << (3 - tx + ((ty&1) ? 0 : 4))))) return 1;
+                if (board[i][j] && (bricks[ty / 2] & (1 << (3 - tx + ((ty & 1) ? 0 : 4))))) return 1;
             }
         }
     }
@@ -70,12 +69,12 @@ static int check_collision(int board[20][10], char bricks[2], int curx, int cury
 
 static void copy_bricks_to_board(int board[20][10], char bricks[2], int curx, int cury)
 {
-    int i, j;
-    for (i=0; i<20; i++) {
-        for (j=0; j<10; j++) {
-            if (j>=curx && j<curx+4 && i>=cury && i<cury+4) {
+    int  i, j;
+    for (i = 0; i < 20; i++) {
+        for (j = 0; j < 10; j++) {
+            if (j >= curx && j < curx + 4 && i >= cury && i < cury + 4) {
                 int tx = j - curx, ty = i - cury;
-                if (bricks[ty / 2] & (1 << (3 - tx + ((ty&1) ? 0 : 4)))) {
+                if (bricks[ty / 2] & (1 << (3 - tx + ((ty & 1) ? 0 : 4)))) {
                     board[i][j] = 1;
                 }
             }
@@ -85,14 +84,12 @@ static void copy_bricks_to_board(int board[20][10], char bricks[2], int curx, in
 
 static int mark_full_rows(int board[20][10])
 {
-    int i, j, l = 0;
-    for (i=0; i<20; i++) {
-        for (j=0; j<10; j++) {
-            if (!board[i][j]) {
-                break;
-            }
+    int  i, j, l = 0;
+    for (i = 0; i < 20; i++) {
+        for (j = 0; j < 10; j++) {
+            if (!board[i][j]) break;
         }
-        if (j == 10) { l++; for (j=0; j<10; j++) board[i][j] = 2; }
+        if (j == 10) { l++; for (j = 0; j < 10; j++) board[i][j] = 2; }
     }
     return l;
 }
@@ -100,16 +97,16 @@ static int mark_full_rows(int board[20][10])
 static void remove_full_rows(int board[20][10])
 {
     int  i, j, f, m;
-    for (i=19,m=19; i>=0 && m>=0; m--) {
-        for (f=0,j=0; j<10; j++) {
-            if ( board[m][j] == 1) { f = 1; break; }
+    for (i = 19, m = 19; i >= 0 && m >= 0; m--) {
+        for (f = 0, j = 0; j < 10; j++) {
+            if (board[m][j] == 1) { f = 1; break; }
         }
         if (f) {
-            for (j=0; j<10; j++) board[i][j] = board[m][j];
+            for (j = 0; j < 10; j++) board[i][j] = board[m][j];
             i--;
         };
     }
-    for (; i>=0; i--) for (j=0; j<10; j++) board[i][j] = 0;
+    for (; i >= 0; i--) for (j = 0; j < 10; j++) board[i][j] = 0;
 }
 
 int main(void)
@@ -119,7 +116,7 @@ int main(void)
     int remove = 0, score = 0, lines = 0, level = 0, history = 0, gameover = 0;
     int quit = 0, key = 0, counter = 0, dirty = 1;
 
-    type = rand()%7, rot = rand()%4, posx = rand()%6, posy = 0, next = rand()%7, nrot = rand()%4;
+    type = rand() % 7, rot = rand() % 4, posx = rand() % 6, posy = 0, next = rand() % 7, nrot = rand() % 4;
 
     while (!quit) {
         if (dirty) {
@@ -133,9 +130,8 @@ int main(void)
             if (gameover) continue;
             speed = 60 - 58 * level / 10;
             if (speed < 2) speed = 2;
-            if (++counter % speed == 0) {
-                key = 'd';
-            } else continue;
+            if (++counter % speed == 0) key = 'd';
+            else continue;
         } else key = getch();
 
         if (gameover) {
@@ -166,7 +162,7 @@ int main(void)
             copy_bricks_to_board(board, g_all_bricks[type][rot], posx, posy);
             remove = mark_full_rows(board);
             lines += remove; score += remove * remove; level = score / 100; history = history > score ? history : score;
-            type = next, rot = nrot, posx = rand()%6, posy = 0; next = rand()%7; nrot = rand()%4;
+            type = next, rot = nrot, posx = rand() % 6, posy = 0; next = rand() % 7; nrot = rand() % 4;
             gameover = check_collision(board, g_all_bricks[type][rot], posx, posy);
         }
     }
