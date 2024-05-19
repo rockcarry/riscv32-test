@@ -4,6 +4,9 @@
 #include <lvgl/lvgl.h>
 #include "ffvmreg.h"
 #include "libffvm.h"
+#ifdef WITH_FFTASK
+#include "fftask.h"
+#endif
 
 #define SCREEN_WIDTH     480
 #define SCREEN_HEIGHT    360
@@ -36,6 +39,15 @@ static void mouse_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data)
 
 static uint32_t get_tick_count(void) { return *REG_FFVM_MTIMECURL; }
 
+static void lvgl_sleep(int ms)
+{
+#ifdef WITH_FFTASK
+    task_sleep(ms);
+#else
+    mdelay(ms);
+#endif
+}
+
 extern void lv_demo_widgets(void);
 extern void lv_demo_widgets_close(void);
 extern void lv_demo_benchmark(void);
@@ -43,6 +55,10 @@ extern void lv_demo_benchmark_close(void);
 
 int main(void)
 {
+#ifdef WITH_FFTASK
+    task_kernel_init();
+#endif
+
     uint32_t *disp_buf = malloc(SCREEN_WIDTH * SCREEN_HEIGHT * sizeof(uint32_t) + 2 * SCREEN_WIDTH * SCREEN_HEIGHT / 2 * sizeof(lv_color_t));
     if (!disp_buf) { printf("failed to allocate display buffer !\n"); return 0; }
     *REG_FFVM_DISP_ADDR        = (uint32_t)disp_buf;
@@ -79,19 +95,21 @@ int main(void)
 
     lv_demo_widgets();
 
-    uint32_t tick_last = get_tick_count(), tick_cur;
-    int32_t  tick_inc;
+    uint32_t tick_next = get_tick_count() + 20;
+    int32_t  tick_sleep;
     while (*REG_FFVM_DISP_WH) {
-        tick_cur  = get_tick_count();
-        tick_inc  = (int32_t)tick_cur - (int32_t)tick_last;
-        if (tick_inc > 0) {
-            lv_tick_inc(tick_inc);
-            tick_last = tick_cur;
-            lv_timer_handler();
-        }
+        lv_tick_inc(20);
+        lv_timer_handler();
+        tick_sleep = tick_next - get_tick_count();
+        tick_next += 20;
+        if (tick_sleep > 0) lvgl_sleep(tick_sleep);
     }
 
     lv_demo_widgets_close();
     free(disp_buf);
+
+#ifdef WITH_FFTASK
+    task_kernel_exit();
+#endif
     return 0;
 }

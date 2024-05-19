@@ -4,14 +4,15 @@ GXX           ?= $(CROSS_COMPILE)g++
 OBJCOPY       ?= $(CROSS_COMPILE)objcopy
 
 LIBFFVM_TOP  = $(shell pwd)/../libffvm
-LIBLVGL_TOP  = $(shell pwd)/../liblvgl
 LIBFATFS_TOP = $(shell pwd)/../fatfs
+LIBFFTASK_TOP= $(shell pwd)/../fftask
+LIBLVGL_TOP  = $(shell pwd)/../liblvgl
 
-C_FLAGS := -Wall -Os -g -I$(LIBFFVM_TOP) -I$(LIBLVGL_TOP)/include
+C_FLAGS := -Wall -Os -g -I$(LIBFFVM_TOP) -I$(LIBFFTASK_TOP) -I$(LIBLVGL_TOP)/include -DWITH_FFTASK
 LDFLAGS := --specs=picolibc.specs --crt0=hosted -T$(LIBFFVM_TOP)/ffvm.ld
-LDFLAGS += -L$(LIBFFVM_TOP)/lib -L$(LIBFATFS_TOP)/lib -L$(LIBLVGL_TOP)/lib
+LDFLAGS += -L$(LIBFFVM_TOP)/lib -L$(LIBFATFS_TOP)/lib -L$(LIBFFTASK_TOP)/lib -L$(LIBLVGL_TOP)/lib
 LDFLAGS += -Wl,--gc-sections,--start-group
-LDFLAGS += --oslib=ffvm -lfatfs -llvgl_demos -llvgl
+LDFLAGS += --oslib=ffvm -lfatfs -lfftask -llvgl_demos -llvgl
 
 PROGS = lvgltest.elf
 PROMS = lvgltest.rom

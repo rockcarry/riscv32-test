@@ -3,6 +3,9 @@
 #include <string.h>
 #include <time.h>
 #include "libffvm.h"
+#ifdef WITH_FFTASK
+#include "fftask.h"
+#endif
 
 static char g_all_bricks[7][4][4] = {
     { { 0xF0, 0x00, 4, 1 }, { 0x88, 0x88, 1, 4 }, { 0xF0, 0x00, 4, 1 }, { 0x88, 0x88, 1, 4 } }, // I
@@ -13,6 +16,15 @@ static char g_all_bricks[7][4][4] = {
     { { 0xC6, 0x00, 3, 2 }, { 0x4C, 0x80, 2, 3 }, { 0xC6, 0x00, 3, 2 }, { 0x4C, 0x80, 2, 3 } }, // Z
     { { 0x6C, 0x00, 3, 2 }, { 0x8C, 0x40, 2, 3 }, { 0x6C, 0x00, 3, 2 }, { 0x8C, 0x40, 2, 3 } }, // Z'
 };
+
+static void game_sleep(int ms)
+{
+#ifdef WITH_FFTASK
+    task_sleep(ms);
+#else
+    mdelay(ms);
+#endif
+}
 
 static void draw_game(int board[20][10], char curbricks[2], int curx, int cury, char nextbricks[2], int level, int score, int lines, int history, int gameover)
 {
@@ -116,6 +128,10 @@ int main(void)
     int remove = 0, score = 0, lines = 0, level = 0, history = 0, gameover = 0;
     int quit = 0, key = 0, counter = 0, dirty = 1;
 
+#ifdef WITH_FFTASK
+    task_kernel_init();
+#endif
+
     type = rand() % 7, rot = rand() % 4, posx = rand() % 6, posy = 0, next = rand() % 7, nrot = rand() % 4;
 
     while (!quit) {
@@ -123,10 +139,10 @@ int main(void)
             draw_game(board, g_all_bricks[type][rot], posx, posy, g_all_bricks[next][nrot], level, score, lines, history, gameover);
             dirty = 0;
         }
-        if (remove) { remove_full_rows(board); remove = 0; mdelay(10); }
+        if (remove) { remove_full_rows(board); remove = 0; game_sleep(10); }
 
         if (!kbhit()) {
-            mdelay(10);
+            game_sleep(10);
             if (gameover) continue;
             speed = 60 - 58 * level / 10;
             if (speed < 2) speed = 2;
@@ -166,5 +182,9 @@ int main(void)
             gameover = check_collision(board, g_all_bricks[type][rot], posx, posy);
         }
     }
+
+#ifdef WITH_FFTASK
+    task_kernel_exit();
+#endif
     return 0;
 }
