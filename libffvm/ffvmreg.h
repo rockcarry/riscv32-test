@@ -63,6 +63,26 @@
 #define REG_FFVM_DISK_SECTOR_IDX  ((volatile uint32_t*)0xFF000508)
 #define REG_FFVM_DISK_SECTOR_DAT  ((volatile uint32_t*)0xFF00050C)
 
+#define FLAG_FFVM_IRQ_AOUT        (1 << 0)
+#define FLAG_FFVM_IRQ_AIN         (1 << 1)
+#define FLAG_FFVM_IRQ_KEYBD       (1 << 2)
+#define FLAG_FFVM_IRQ_MOUSE       (1 << 3)
+#define FLAG_FFVM_IRQ_ETHPHY      (1 << 4)
+
 #define REG_FFVM_CPU_FREQ         ((volatile uint32_t*)0xFF000600)
+#define REG_FFVM_IRQ_ENABLE       ((volatile uint32_t*)0xFF000604)
+#define REG_FFVM_IRQ_FLAGS        ((volatile uint32_t*)0xFF000608)
+#define REG_FFVM_IRQ_AOUT_THRES   ((volatile uint32_t*)0xFF00060C)
+#define REG_FFVM_IRQ_AIN_THRES    ((volatile uint32_t*)0xFF000610)
+#define REG_FFVM_IRQ_ETHP_THRES   ((volatile uint32_t*)0xFF000614)
+
+#define REG_FFVM_ETHPHY_OUT_ADDR  ((volatile uint32_t*)0xFF000700)
+#define REG_FFVM_ETHPHY_OUT_SIZE  ((volatile uint32_t*)0xFF000704)
+#define REG_FFVM_ETHPHY_IN_ADDR   ((volatile uint32_t*)0xFF000708)
+#define REG_FFVM_ETHPHY_IN_HEAD   ((volatile uint32_t*)0xFF00070C)
+#define REG_FFVM_ETHPHY_IN_TAIL   ((volatile uint32_t*)0xFF000710)
+#define REG_FFVM_ETHPHY_IN_SIZE   ((volatile uint32_t*)0xFF000714)
+#define REG_FFVM_ETHPHY_IN_CURR   ((volatile uint32_t*)0xFF000718)
+#define REG_FFVM_ETHPHY_IN_LOCK   ((volatile uint32_t*)0xFF00071C)
 
 #endif

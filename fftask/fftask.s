@@ -82,7 +82,6 @@ task_switch_then_interrupt_on:
     mret
 
 .extern task_timer_schedule
-.global task_timer_isr
 .align 4
 task_timer_isr:
     csrrw t0, mscratch, t0  # t0 <-> mscratch
@@ -100,3 +99,43 @@ task_timer_isr:
     load_context a0         # load all regs from task_new except a0
     lw a0, 40(a0)           # load a0 from task_new->a0
     mret
+
+.align 4
+task_eintr_isr:
+    csrrw t0, mscratch, t0  # t0 <-> mscratch
+    save_context t0         # save all regs to task_old except t0
+    csrrw t1, mscratch, a0  # t1 <- mscratch <- a0
+    sw t1, 20(t0)           # save t0 -> task_old->t0 (note: t1 is actual the orignal t0 value)
+    csrr ra, mepc           # ra <- mepc
+    sw ra, 0 (t0)           # save ra -> task_old->pc
+
+    jal task_eintr_handler  # external interrupt handler, after calling a0 is the return of task_eintr_handler
+    csrw mscratch, a0       # mscratch <- a0
+
+    lw t2, 0 (a0)           # t2 <- task_new->pc
+    csrw mepc, t2           # mepc <- t2
+    load_context a0         # load all regs from task_new except a0
+    lw a0, 40(a0)           # load a0 from task_new->a0
+    mret
+
+.extern task_isr_external
+.global task_isr_vector
+.option norvc
+.align 4
+task_isr_vector:
+    mret                # 0
+    mret                # 1
+    mret                # 2
+    mret                # 3 software interrupt
+    mret                # 4
+    mret                # 5
+    mret                # 6
+    j task_timer_isr    # 7 timer interrupt
+    mret                # 8
+    mret                # 9
+    mret                # 10
+    j task_eintr_isr    # 11 external interrupt
+    mret                # 12
+    mret                # 13
+    mret                # 14
+    mret                # 15

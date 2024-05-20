@@ -35,8 +35,8 @@ static void timer_interrupt_init(void)
     *REG_FFVM_MTIMECMPL = mtimecmp >>  0;
     *REG_FFVM_MTIMECMPH = mtimecmp >> 32;
     s_old_mtvec = csr_read(RISCV_CSR_MTVEC);
-    csr_write(RISCV_CSR_MTVEC, (uint32_t)task_timer_isr); // setup timer isr
-    csr_setbits(RISCV_CSR_MIE    , (1 << 7)); // enable timer interrupt
+    csr_write(RISCV_CSR_MTVEC, (uint32_t)task_isr_vector + 1); // setup timer isr
+    csr_setbits(RISCV_CSR_MIE    , (1 << 7) | (1 << 11)); // enable timer & external interrupt
     csr_setbits(RISCV_CSR_MSTATUS, (1 << 7)); // set mstatus:mip to 1
 }
 
@@ -52,7 +52,7 @@ static void timer_interrupt_exit(void)
     *REG_FFVM_MTIMECMPL = 0xFFFFFFFF;
     *REG_FFVM_MTIMECMPH = 0xFFFFFFFF;
     csr_write(RISCV_CSR_MTVEC, s_old_mtvec); // restore old timer isr
-    csr_clrbits(RISCV_CSR_MIE    , (1 << 7)); // disable timer interrupt
+    csr_clrbits(RISCV_CSR_MIE    , (1 << 7) | (1 << 11)); // disable timer & external interrupt
     csr_clrbits(RISCV_CSR_MSTATUS, (1 << 7)); // set mstatus:mip to 0
 }
 
@@ -219,6 +219,21 @@ static KOBJECT* task_create_internal(char *name, void* (*taskproc)(void*), void 
     return task;
 }
 
+static KOBJECT* (*s_eintr_handler)(void*) = NULL;
+static void      *s_eintr_hdlctxt         = NULL;
+TASKCTX* task_eintr_handler(void)
+{
+    if (!s_eintr_handler) return s_running_task->taskctx;
+    KOBJECT *task = s_eintr_handler(s_eintr_hdlctxt);
+    if (!task) task = s_running_task;
+    else {
+        t_enqueue(&s_ready_queue, s_running_task);
+        t_dequeue(task); s_running_task = task;
+        *REG_FFVM_CPU_FREQ = 0xFFFFFFFF; // switch to max cpu freq
+    }
+    return task->taskctx;
+}
+
 void task_kernel_init(void)
 {
     interrupt_off();
@@ -249,6 +264,12 @@ void task_kernel_exit(void)
     free(s_running_task); s_main_task = s_idle_task = s_running_task = NULL;
     timer_interrupt_exit();
     interrupt_on();
+}
+
+void task_kernel_set_eintr_handler(KOBJECT* (*handler)(void*), void *hdlctxt)
+{
+    s_eintr_handler = handler;
+    s_eintr_hdlctxt = hdlctxt;
 }
 
 static void kobject_dump(KOBJECT *obj)
@@ -591,6 +612,19 @@ int semaphore_post(KOBJECT *sem, int n)
         interrupt_on();
     }
     return 0;
+}
+
+KOBJECT* semaphore_post_isr(KOBJECT *sem)
+{
+    KOBJECT *task = NULL;
+    if (!sem || sem->type != FFTASK_KOBJ_SEM) return task;
+    if (sem->w_next != sem) {
+        task = sem->w_next;
+        w_dequeue(task); t_enqueue(&s_ready_queue, task);
+    } else {
+        sem->sem.val++;
+    }
+    return task;
 }
 
 int semaphore_getvalue(KOBJECT *sem, int *val)

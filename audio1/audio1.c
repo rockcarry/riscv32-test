@@ -5,7 +5,7 @@
 #include "ffvmreg.h"
 #include "libffvm.h"
 
-#define AUDIO_ADEV_BUFSIZE 8129
+#define AUDIO_ADEV_BUFSIZE 8192
 #define AUDIO_SAMPLERATE   8000
 #define AUDIO_CLIP_SIZE    64
 #define AUDIO_START_FREQ   100
@@ -87,7 +87,7 @@ int main(void)
     int16_t *test_buf  = malloc(test_len);
     int16_t *ptr       = test_buf;
     float    phase     = 0;
-    int      i;
+    int      size, curr, tail, i;
     for (i = start_idx; i <= stop_idx; i++) {
         phase = gen_sin_pcm_with_phase(ptr, AUDIO_CLIP_SIZE, AUDIO_SAMPLERATE, AUDIO_IDX_TO_FREQ(i), 32767 / 2, phase);
         ptr  += AUDIO_CLIP_SIZE;
@@ -101,27 +101,23 @@ int main(void)
     *REG_FFVM_AUDIO_OUT_SIZE =  AUDIO_ADEV_BUFSIZE;
     *REG_FFVM_AUDIO_OUT_FMT  = (AUDIO_SAMPLERATE << 0) | (1 << 24);
     while (src_len > 0) {
-        int tail = *REG_FFVM_AUDIO_OUT_TAIL;
-        int size = *REG_FFVM_AUDIO_OUT_SIZE;
-        int curr = *REG_FFVM_AUDIO_OUT_CURR;
-        i = size - curr;
-        i = i < src_len ? i : src_len;
+        *REG_FFVM_AUDIO_OUT_LOCK = 1;
+        tail = *REG_FFVM_AUDIO_OUT_TAIL;
+        size = *REG_FFVM_AUDIO_OUT_SIZE;
+        curr = *REG_FFVM_AUDIO_OUT_CURR;
+        i = size - curr; i = i < src_len ? i : src_len;
         if (i > 0) {
-            tail     = ringbuf_write(adev_buf, size, tail, src_buf, i);
-            curr    += i;
-            src_len -= i;
-            src_buf += i;
-            *REG_FFVM_AUDIO_OUT_LOCK = 1;
+            tail  = ringbuf_write(adev_buf, size, tail, src_buf, i);
+            curr += i, src_len -= i, src_buf += i;
             *REG_FFVM_AUDIO_OUT_TAIL = tail;
             *REG_FFVM_AUDIO_OUT_CURR = curr;
-            *REG_FFVM_AUDIO_OUT_LOCK = 0;
         }
+        *REG_FFVM_AUDIO_OUT_LOCK = 0;
     }
     *REG_FFVM_AUDIO_OUT_SIZE = 0;
     *REG_FFVM_AUDIO_OUT_FMT  = 0;
 
     uint32_t *disp_buf = malloc(SCREEN_WIDTH * SCREEN_HEIGHT * sizeof(uint32_t));
-    printf("disp_buf: %p\n", disp_buf);
     *REG_FFVM_DISP_ADDR     = (uint32_t)disp_buf;
     *REG_FFVM_DISP_WH       = (SCREEN_WIDTH << 0) | (SCREEN_HEIGHT << 16);
 
