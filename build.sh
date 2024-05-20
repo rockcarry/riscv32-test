@@ -7,6 +7,7 @@ case "$1" in
     make -C $PWD/libffvm
     make -C $PWD/fatfs
     cd $PWD/fftask && ./build.sh && cd -
+
     make -C $PWD/2048
     make -C $PWD/snake
     make -C $PWD/bricks
@@ -17,14 +18,17 @@ case "$1" in
     make -C $PWD/audio2
     make -C $PWD/lvgltest
     make -C $PWD/file
+    make -C $PWD/ethphy
     rm   -rf $PWD/out
     mkdir -p $PWD/out
     find . -path "./out" -prune -o -iname "*.rom" -exec cp '{}' out ';'
     ;;
+
 clean|distclean)
     make -C $PWD/libffvm  clean
     make -C $PWD/fatfs    clean
     cd $PWD/fftask && ./build.sh $1 && cd -
+
     make -C $PWD/2048     clean
     make -C $PWD/snake    clean
     make -C $PWD/bricks   clean
@@ -35,6 +39,7 @@ clean|distclean)
     make -C $PWD/audio2   clean
     make -C $PWD/lvgltest clean
     make -C $PWD/file     clean
+    make -C $PWD/ethphy   clean
     rm -rf $PWD/out
     ;;
 esac
