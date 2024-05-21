@@ -19,6 +19,7 @@ case "$1" in
     make -C $PWD/lvgltest
     make -C $PWD/file
     make -C $PWD/ethphy
+    make -C $PWD/lwiptest
     rm   -rf $PWD/out
     mkdir -p $PWD/out
     find . -path "./out" -prune -o -iname "*.rom" -exec cp '{}' out ';'
@@ -40,6 +41,7 @@ clean|distclean)
     make -C $PWD/lvgltest clean
     make -C $PWD/file     clean
     make -C $PWD/ethphy   clean
+    make -C $PWD/lwiptest clean
     rm -rf $PWD/out
     ;;
 esac

@@ -82,7 +82,6 @@ static void line(uint32_t *disp, int x1, int y1, int x2, int y2, int c)
 
 static void* audio_in_proc(void *arg)
 {
-    KOBJECT  *sem      = (KOBJECT*)arg;
     uint32_t *disp_buf = malloc(SCREEN_WIDTH * SCREEN_HEIGHT * sizeof(uint32_t));
     int       lasty, cury, flag, x, i;
     int16_t   pcm[512];
@@ -97,7 +96,7 @@ static void* audio_in_proc(void *arg)
     *REG_FFVM_IRQ_ENABLE   |= FLAG_FFVM_IRQ_AIN;
 
     while (*REG_FFVM_DISP_WH) {
-        semaphore_wait(sem);
+        semaphore_wait(g_sem_irq_ai);
         do {
             *REG_FFVM_AUDIO_IN_LOCK = 1;
             if (*REG_FFVM_AUDIO_IN_CURR >= sizeof(pcm)) {
@@ -133,7 +132,6 @@ static void* audio_in_proc(void *arg)
 
 static void* audio_out_proc(void *arg)
 {
-    KOBJECT *sem       = (KOBJECT*)arg;
     int      start_idx = AUDIO_FREQ_TO_IDX(AUDIO_START_FREQ);
     int      stop_idx  = AUDIO_FREQ_TO_IDX(AUDIO_STOP_FREQ );
     int      test_len  = AUDIO_CLIP_SIZE * (stop_idx - start_idx + 1) * sizeof(int16_t);
@@ -156,7 +154,7 @@ static void* audio_out_proc(void *arg)
     *REG_FFVM_IRQ_ENABLE    |= FLAG_FFVM_IRQ_AOUT;
 
     while (src_len > 0) {
-        semaphore_wait(sem);
+        semaphore_wait(g_sem_irq_ao);
         *REG_FFVM_AUDIO_OUT_LOCK = 1;
         tail = *REG_FFVM_AUDIO_OUT_TAIL;
         size = *REG_FFVM_AUDIO_OUT_SIZE;
@@ -177,40 +175,16 @@ static void* audio_out_proc(void *arg)
     return NULL;
 }
 
-static KOBJECT* my_eintr_handler(void *arg)
-{
-    KOBJECT **sem    = arg;
-    KOBJECT *task_ai = NULL;
-    KOBJECT *task_ao = NULL;
-    KOBJECT *task_ret= NULL;
-    if (*REG_FFVM_IRQ_FLAGS & FLAG_FFVM_IRQ_AIN) {
-        *REG_FFVM_IRQ_FLAGS &= ~FLAG_FFVM_IRQ_AIN;
-        task_ai = semaphore_post_isr(sem[0]);
-        if (!task_ret && task_ai) task_ret = task_ai;
-    }
-    if (*REG_FFVM_IRQ_FLAGS & FLAG_FFVM_IRQ_AOUT) {
-        *REG_FFVM_IRQ_FLAGS &= ~FLAG_FFVM_IRQ_AOUT;
-        task_ao = semaphore_post_isr(sem[1]);
-        if (!task_ret && task_ao) task_ret = task_ao;
-    }
-    return task_ret;
-}
-
 int main(void)
 {
-    KOBJECT *sem[2], *task[2];
+    KOBJECT *task[2];
     task_kernel_init();
     *REG_FFVM_AUDIO_OUT_FMT = (AUDIO_SAMPLERATE << 0) | (1 << 24);
     *REG_FFVM_AUDIO_IN_FMT  = (AUDIO_SAMPLERATE << 0) | (1 << 24);
-    sem[0]  = semaphore_init("sem_ai", 0);
-    sem[1]  = semaphore_init("sem_ao", 1);
-    task[0] = task_create("task_ai", audio_in_proc , sem[0], 0, 0);
-    task[1] = task_create("task_ao", audio_out_proc, sem[1], 0, 0);
-    task_kernel_set_eintr_handler(my_eintr_handler, sem);
+    task[0] = task_create("task_ai", audio_in_proc , NULL, 0, 0);
+    task[1] = task_create("task_ao", audio_out_proc, NULL, 0, 0);
     task_join(task[0], NULL);
     task_join(task[1], NULL);
-    semaphore_destroy(sem[0]);
-    semaphore_destroy(sem[1]);
     *REG_FFVM_AUDIO_IN_FMT  = 0;
     *REG_FFVM_AUDIO_OUT_FMT = 0;
     task_kernel_exit();

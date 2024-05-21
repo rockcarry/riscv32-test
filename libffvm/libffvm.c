@@ -4,13 +4,15 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/time.h>
+#include <unistd.h>
+#include <fcntl.h>
 #include <fatfs.h>
 #include "ffvmreg.h"
 
 static int stdin_getc(FILE *file)
 {
     int  ch;
-    do { ch = *REG_FFVM_STDIO; } while (ch == EOF);
+    do { ch = *REG_FFVM_STDIO; usleep(10 * 1000); } while (ch == EOF);
     return ch;
 }
 
@@ -63,6 +65,7 @@ int open(const char *file, int flags, ...)
     if (s_fatfs_inited == 0) {
         s_fatfs_inited = 1;
         f_mount(&s_fatfs_context, "", 0);
+        f_chdir("/disk");
     }
 
     int  i;

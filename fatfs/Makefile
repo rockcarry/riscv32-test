@@ -3,7 +3,9 @@ GCC           ?= $(CROSS_COMPILE)gcc
 GXX           ?= $(CROSS_COMPILE)g++
 OBJCOPY       ?= $(CROSS_COMPILE)objcopy
 
-C_FLAGS := -Wall -Os
+LIBFFTASK_TOP = $(shell pwd)/../fftask
+
+C_FLAGS := -Wall -Os -I$(LIBFFTASK_TOP)
 
 PROGS = libfatfs.a
 

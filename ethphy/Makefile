@@ -4,13 +4,14 @@ GXX           ?= $(CROSS_COMPILE)g++
 OBJCOPY       ?= $(CROSS_COMPILE)objcopy
 
 LIBFFVM_TOP  = $(shell pwd)/../libffvm
+LIBFATFS_TOP = $(shell pwd)/../fatfs
 LIBFFTASK_TOP= $(shell pwd)/../fftask
 
 C_FLAGS := -Wall -Os -g -I$(LIBFFVM_TOP) -I$(LIBFFTASK_TOP)
 LDFLAGS := --specs=picolibc.specs --crt0=hosted -T$(LIBFFVM_TOP)/ffvm.ld
-LDFLAGS += -L$(LIBFFVM_TOP)/lib -L$(LIBFFTASK_TOP)/lib
+LDFLAGS += -L$(LIBFFVM_TOP)/lib -L$(LIBFATFS_TOP)/lib -L$(LIBFFTASK_TOP)/lib
 LDFLAGS += -Wl,--gc-sections,--start-group
-LDFLAGS += --oslib=ffvm -lfftask
+LDFLAGS += --oslib=ffvm -lfatfs -lfftask
 
 LIBRARY = libethphy.a
 PROGS   = ethphy.elf

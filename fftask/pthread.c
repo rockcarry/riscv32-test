@@ -54,7 +54,7 @@ int pthread_mutex_init(pthread_mutex_t *mutex, pthread_mutexattr_t *attr)
 int pthread_mutex_lock(pthread_mutex_t *mutex)
 {
     if (!mutex) return -1;
-    return mutex_unlock(*mutex);
+    return mutex_lock(*mutex);
 }
 
 int pthread_mutex_timedlock(pthread_mutex_t *mutex, struct timespec *ts)

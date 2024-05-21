@@ -10,7 +10,6 @@ typedef struct {
     #define FLAG_EXIT (1 << 0)
     uint32_t  flags;
     KOBJECT  *task;
-    KOBJECT  *sem;
     uint8_t   buf[64 * 1024];
     PFN_ETHPHY_CALLBACK callback;
     void               *cbctx;
@@ -35,7 +34,7 @@ static void* ethphy_work_proc(void *arg)
     uint8_t  buf[2048], *pkt;
     uint32_t len = 0, head;
     while (!(phy->flags & FLAG_EXIT)) {
-        semaphore_wait(phy->sem);
+        semaphore_wait(g_sem_irq_eth);
 
         len = 0;
         *REG_FFVM_ETHPHY_IN_LOCK = 1;
@@ -65,7 +64,6 @@ void* ethphy_open(int dev, PFN_ETHPHY_CALLBACK callback, void *cbctx)
     *REG_FFVM_IRQ_ENABLE    |= FLAG_FFVM_IRQ_ETHPHY;
     phy->callback = callback;
     phy->cbctx    = cbctx;
-    phy->sem      = semaphore_init(NULL, 0);
     phy->task     = task_create(NULL, ethphy_work_proc, phy, 0, 0);
     return phy;
 }
@@ -75,9 +73,8 @@ void ethphy_close(void *ctx)
     if (!ctx) return;
     PHYDEV *phy = ctx;
     phy->flags |= FLAG_EXIT;
-    semaphore_post(phy->sem, 1);
+    semaphore_post(g_sem_irq_eth, 1);
     task_join(phy->task, NULL);
-    semaphore_destroy(phy->sem);
     *REG_FFVM_IRQ_ENABLE    &= ~FLAG_FFVM_IRQ_ETHPHY;
     *REG_FFVM_ETHPHY_IN_SIZE =  0;
     free(phy);
@@ -92,17 +89,6 @@ int ethphy_send(void *ctx, char *buf, int len)
 }
 
 #ifdef _TEST_
-static KOBJECT* my_eintr_handler(void *arg)
-{
-    PHYDEV  *phy  = arg;
-    KOBJECT *task = NULL;
-    if (*REG_FFVM_IRQ_FLAGS & FLAG_FFVM_IRQ_ETHPHY) {
-        *REG_FFVM_IRQ_FLAGS &= ~FLAG_FFVM_IRQ_ETHPHY;
-        task = semaphore_post_isr(phy->sem);
-    }
-    return task;
-}
-
 static void my_ethphy_callback(void *cbctx, char *buf, int len)
 {
     printf("ethphy get input packet buf: %p, len: %d\n", buf, len);
@@ -112,7 +98,6 @@ int main(void)
 {
     task_kernel_init();
     void *phy = ethphy_open(0, my_ethphy_callback, NULL);
-    task_kernel_set_eintr_handler(my_eintr_handler, phy);
     while (1) {
         if (kbhit()) {
             char c = getch();

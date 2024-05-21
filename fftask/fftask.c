@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 #include "ffvmreg.h"
 #include "libffvm.h"
 #include "fftask.h"
@@ -219,12 +220,39 @@ static KOBJECT* task_create_internal(char *name, void* (*taskproc)(void*), void 
     return task;
 }
 
-static KOBJECT* (*s_eintr_handler)(void*) = NULL;
-static void      *s_eintr_hdlctxt         = NULL;
+KOBJECT *g_sem_irq_ai  = NULL;
+KOBJECT *g_sem_irq_ao  = NULL;
+KOBJECT *g_sem_irq_eth = NULL;
+static KOBJECT* task_default_eintr_cb(void *arg)
+{
+    KOBJECT *task_ai  = NULL;
+    KOBJECT *task_ao  = NULL;
+    KOBJECT *task_eth = NULL;
+    KOBJECT *task_ret = NULL;
+    if (*REG_FFVM_IRQ_FLAGS & FLAG_FFVM_IRQ_AIN) {
+        *REG_FFVM_IRQ_FLAGS &= ~FLAG_FFVM_IRQ_AIN;
+        task_ai = semaphore_post_isr(g_sem_irq_ai);
+        if (!task_ret && task_ai) task_ret = task_ai;
+    }
+    if (*REG_FFVM_IRQ_FLAGS & FLAG_FFVM_IRQ_AOUT) {
+        *REG_FFVM_IRQ_FLAGS &= ~FLAG_FFVM_IRQ_AOUT;
+        task_ao = semaphore_post_isr(g_sem_irq_ao);
+        if (!task_ret && task_ao) task_ret = task_ao;
+    }
+    if (*REG_FFVM_IRQ_FLAGS & FLAG_FFVM_IRQ_ETHPHY) {
+        *REG_FFVM_IRQ_FLAGS &= ~FLAG_FFVM_IRQ_ETHPHY;
+        task_eth = semaphore_post_isr(g_sem_irq_eth);
+        if (!task_ret && task_eth) task_ret = task_eth;
+    }
+    return task_ret;
+}
+
+static KOBJECT* (*s_eintr_callback)(void*) = task_default_eintr_cb;
+static void      *s_eintr_cbctxt           = NULL;
 TASKCTX* task_eintr_handler(void)
 {
-    if (!s_eintr_handler) return s_running_task->taskctx;
-    KOBJECT *task = s_eintr_handler(s_eintr_hdlctxt);
+    if (!s_eintr_callback) return s_running_task->taskctx;
+    KOBJECT *task = s_eintr_callback(s_eintr_cbctxt);
     if (!task) task = s_running_task;
     else {
         t_enqueue(&s_ready_queue, s_running_task);
@@ -251,10 +279,18 @@ void task_kernel_init(void)
 
     s_stat_start_tick = get_tick_count();
     interrupt_on();
+
+    g_sem_irq_ai  = semaphore_init("irq_ai" , 0);
+    g_sem_irq_ao  = semaphore_init("irq_ao" , 0);
+    g_sem_irq_eth = semaphore_init("irq_eth", 0);
 }
 
 void task_kernel_exit(void)
 {
+    semaphore_destroy(g_sem_irq_ai ); g_sem_irq_ai  = NULL;
+    semaphore_destroy(g_sem_irq_ao ); g_sem_irq_ao  = NULL;
+    semaphore_destroy(g_sem_irq_eth); g_sem_irq_eth = NULL;
+
     KOBJECT *obj, *tmp;
     interrupt_off();
     csr_write(RISCV_CSR_MSCRATCH, s_old_mscratch);
@@ -266,10 +302,10 @@ void task_kernel_exit(void)
     interrupt_on();
 }
 
-void task_kernel_set_eintr_handler(KOBJECT* (*handler)(void*), void *hdlctxt)
+void task_kernel_set_eintr_callback(KOBJECT* (*callback)(void*), void *cbctxt)
 {
-    s_eintr_handler = handler;
-    s_eintr_hdlctxt = hdlctxt;
+    s_eintr_callback = callback;
+    s_eintr_cbctxt   = cbctxt;
 }
 
 static void kobject_dump(KOBJECT *obj)
@@ -411,6 +447,7 @@ int task_detach(KOBJECT *task)
 
 void task_sleep(int32_t ms)
 {
+    if (!s_running_task) return;
     interrupt_off();
     s_running_task->taskctx->timeout = get_tick_count() + ms;
     s_insert(s_running_task);
@@ -621,8 +658,6 @@ KOBJECT* semaphore_post_isr(KOBJECT *sem)
     if (sem->w_next != sem) {
         task = sem->w_next;
         w_dequeue(task); t_enqueue(&s_ready_queue, task);
-    } else {
-        sem->sem.val++;
     }
     return task;
 }
@@ -633,5 +668,11 @@ int semaphore_getvalue(KOBJECT *sem, int *val)
     if (!sem || sem->type != FFTASK_KOBJ_SEM) { interrupt_on(); return -1; }
     if (val) *val = sem->sem.val;
     interrupt_on();
+    return 0;
+}
+
+int usleep(useconds_t usec)
+{
+    task_sleep(usec / 1000);
     return 0;
 }

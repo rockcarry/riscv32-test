@@ -3,7 +3,7 @@ GCC           ?= $(CROSS_COMPILE)gcc
 GXX           ?= $(CROSS_COMPILE)g++
 OBJCOPY       ?= $(CROSS_COMPILE)objcopy
 
-C_FLAGS := -Wall -Os -I$(shell pwd)/../fatfs
+C_FLAGS := -Wall -Os -ffunction-sections -fdata-sections -I$(shell pwd)/../fatfs -DENABLE_FATFS
 
 PROGS = libffvm.a
 

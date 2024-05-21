@@ -65,7 +65,7 @@ void     task_switch_then_interrupt_on(TASKCTX *taskctx);
 void     task_kernel_init(void);
 void     task_kernel_exit(void);
 void     task_kernel_dump(char *title, char *type, int flag);
-void     task_kernel_set_eintr_handler(KOBJECT* (*handler)(void*), void *hdlctxt);
+void     task_kernel_set_eintr_callback(KOBJECT* (*callback)(void*), void *cbctx);
 
 #define FFTASK_TASK_CREATE_DETACH (1 << 3)
 KOBJECT* task_create(char *name, void* (*taskproc)(void*), void *taskarg, int stacksize, int flags);
@@ -95,5 +95,9 @@ int      semaphore_timedwait(KOBJECT *sem, int32_t ms);
 int      semaphore_post     (KOBJECT *sem, int n);
 KOBJECT* semaphore_post_isr (KOBJECT *sem);
 int      semaphore_getvalue (KOBJECT *sem, int *val);
+
+extern KOBJECT *g_sem_irq_ai ;
+extern KOBJECT *g_sem_irq_ao ;
+extern KOBJECT *g_sem_irq_eth;
 
 #endif
