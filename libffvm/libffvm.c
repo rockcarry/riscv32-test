@@ -1,7 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
-#include <unistd.h>
-#include <fcntl.h>
+#define _POSIX_MONOTONIC_CLOCK
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/time.h>
@@ -189,5 +188,20 @@ int gettimeofday(struct timeval *restrict tv, void *restrict tz)
 {
     tv->tv_sec  = *REG_FFVM_REALTIME;
     tv->tv_usec = *REG_FFVM_MTIMECURL * 1000;
+    return 0;
+}
+
+int clock_gettime(clockid_t clk_id, struct timespec *tp)
+{
+    switch (clk_id) {
+    case CLOCK_MONOTONIC:
+        tp->tv_sec  = (((uint64_t)*REG_FFVM_MTIMECURH << 32) | ((uint64_t)*REG_FFVM_MTIMECURL << 0)) / 1000;
+        tp->tv_nsec = *REG_FFVM_MTIMECURL % 1000 * 1000 * 1000;
+        break;
+    case CLOCK_REALTIME:
+        tp->tv_sec  = *REG_FFVM_REALTIME;
+        tp->tv_nsec = *REG_FFVM_MTIMECURL % 1000 * 1000 * 1000;
+        break;
+    }
     return 0;
 }

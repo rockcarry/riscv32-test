@@ -20,12 +20,12 @@
 #define REG_FFVM_CLRSCR           ((volatile uint32_t*)0xFF000010)
 #define REG_FFVM_GOTOXY           ((volatile uint32_t*)0xFF000014)
 
-#define REG_FFVM_KEYBD1           ((volatile uint32_t*)0xFF000110)
-#define REG_FFVM_KEYBD2           ((volatile uint32_t*)0xFF000114)
-#define REG_FFVM_KEYBD3           ((volatile uint32_t*)0xFF000118)
-#define REG_FFVM_KEYBD4           ((volatile uint32_t*)0xFF00011C)
-#define REG_FFVM_MOUSE_XY         ((volatile uint32_t*)0xFF000120)
-#define REG_FFVM_MOUSE_BTN        ((volatile uint32_t*)0xFF000124)
+#define REG_FFVM_KEYBD1           ((volatile uint32_t*)0xFF000100)
+#define REG_FFVM_KEYBD2           ((volatile uint32_t*)0xFF000104)
+#define REG_FFVM_KEYBD3           ((volatile uint32_t*)0xFF000108)
+#define REG_FFVM_KEYBD4           ((volatile uint32_t*)0xFF00010C)
+#define REG_FFVM_MOUSE_XY         ((volatile uint32_t*)0xFF000110)
+#define REG_FFVM_MOUSE_BTN        ((volatile uint32_t*)0xFF000114)
 
 #define REG_FFVM_DISP_WH          ((volatile uint32_t*)0xFF000200)
 #define REG_FFVM_DISP_ADDR        ((volatile uint32_t*)0xFF000204)
