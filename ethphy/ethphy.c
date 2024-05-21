@@ -10,7 +10,7 @@ typedef struct {
     #define FLAG_EXIT (1 << 0)
     uint32_t  flags;
     KOBJECT  *task;
-    uint8_t   buf[64 * 1024];
+    uint8_t   buf[32 * 1024];
     PFN_ETHPHY_CALLBACK callback;
     void               *cbctx;
 } PHYDEV;
@@ -32,25 +32,20 @@ static void* ethphy_work_proc(void *arg)
 {
     PHYDEV  *phy = arg;
     uint8_t  buf[2048], *pkt;
-    uint32_t len = 0, head;
+    uint32_t len;
     while (!(phy->flags & FLAG_EXIT)) {
         semaphore_wait(g_sem_irq_eth);
-
-        len = 0;
-        *REG_FFVM_ETHPHY_IN_LOCK = 1;
         while (*REG_FFVM_ETHPHY_IN_CURR >= sizeof(uint32_t)) {
-            head = ringbuf_read(phy->buf, *REG_FFVM_ETHPHY_IN_SIZE, *REG_FFVM_ETHPHY_IN_HEAD, (uint8_t*)&len, sizeof(len));
-            if (*REG_FFVM_ETHPHY_IN_CURR < sizeof(len) + len) { len = 0; break; }
-
-            if (len > sizeof(buf)) printf("ethphy input packet size %lu too big drop it !\n", len);
-            pkt = len > sizeof(buf) ? NULL : buf;
-
-            head = ringbuf_read(phy->buf, *REG_FFVM_ETHPHY_IN_SIZE, head, pkt, len);
-            *REG_FFVM_ETHPHY_IN_HEAD  = head;
-            *REG_FFVM_ETHPHY_IN_CURR -= sizeof(len) + len;
+            *REG_FFVM_ETHPHY_IN_HEAD = ringbuf_read(phy->buf, *REG_FFVM_ETHPHY_IN_SIZE, *REG_FFVM_ETHPHY_IN_HEAD, (uint8_t*)&len, sizeof(len));
+            if (*REG_FFVM_ETHPHY_IN_CURR >= sizeof(len) + len) {
+                pkt = len < sizeof(buf) ? buf : NULL; // if pkt size too big, we should drop it
+                *REG_FFVM_ETHPHY_IN_HEAD  = ringbuf_read(phy->buf, *REG_FFVM_ETHPHY_IN_SIZE, *REG_FFVM_ETHPHY_IN_HEAD, pkt, len);
+                *REG_FFVM_ETHPHY_IN_LOCK  = 1;
+                *REG_FFVM_ETHPHY_IN_CURR -= sizeof(len) + len;
+                *REG_FFVM_ETHPHY_IN_LOCK  = 0;
+            }
+            if (len <= sizeof(buf) && phy->callback) phy->callback(phy->cbctx, (char*)buf, len);
         }
-        *REG_FFVM_ETHPHY_IN_LOCK = 0;
-        if (phy->callback && len) phy->callback(phy->cbctx, (char*)buf, len);
     }
     return NULL;
 }

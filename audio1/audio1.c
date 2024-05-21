@@ -87,7 +87,8 @@ int main(void)
     int16_t *test_buf  = malloc(test_len);
     int16_t *ptr       = test_buf;
     float    phase     = 0;
-    int      size, curr, tail, i;
+    int      i;
+
     for (i = start_idx; i <= stop_idx; i++) {
         phase = gen_sin_pcm_with_phase(ptr, AUDIO_CLIP_SIZE, AUDIO_SAMPLERATE, AUDIO_IDX_TO_FREQ(i), 32767 / 2, phase);
         ptr  += AUDIO_CLIP_SIZE;
@@ -101,18 +102,15 @@ int main(void)
     *REG_FFVM_AUDIO_OUT_SIZE =  AUDIO_ADEV_BUFSIZE;
     *REG_FFVM_AUDIO_OUT_FMT  = (AUDIO_SAMPLERATE << 0) | (1 << 24);
     while (src_len > 0) {
-        *REG_FFVM_AUDIO_OUT_LOCK = 1;
-        tail = *REG_FFVM_AUDIO_OUT_TAIL;
-        size = *REG_FFVM_AUDIO_OUT_SIZE;
-        curr = *REG_FFVM_AUDIO_OUT_CURR;
-        i = size - curr; i = i < src_len ? i : src_len;
+        i = *REG_FFVM_AUDIO_OUT_SIZE - *REG_FFVM_AUDIO_OUT_CURR;
+        i = i < src_len ? i : src_len;
         if (i > 0) {
-            tail  = ringbuf_write(adev_buf, size, tail, src_buf, i);
-            curr += i, src_len -= i, src_buf += i;
-            *REG_FFVM_AUDIO_OUT_TAIL = tail;
-            *REG_FFVM_AUDIO_OUT_CURR = curr;
+            *REG_FFVM_AUDIO_OUT_TAIL  = ringbuf_write(adev_buf, *REG_FFVM_AUDIO_OUT_SIZE, *REG_FFVM_AUDIO_OUT_TAIL, src_buf, i);
+            *REG_FFVM_AUDIO_OUT_LOCK  = 1;
+            *REG_FFVM_AUDIO_OUT_CURR += i;
+            *REG_FFVM_AUDIO_OUT_LOCK  = 0;
+            src_len -= i, src_buf += i;
         }
-        *REG_FFVM_AUDIO_OUT_LOCK = 0;
     }
     *REG_FFVM_AUDIO_OUT_SIZE = 0;
     *REG_FFVM_AUDIO_OUT_FMT  = 0;
@@ -128,15 +126,16 @@ int main(void)
     while (*REG_FFVM_DISP_WH) {
         int lasty, cury, flag, x, i;
         int16_t pcm[512];
-        *REG_FFVM_AUDIO_IN_LOCK = 1;
+
         if (*REG_FFVM_AUDIO_IN_CURR >= sizeof(pcm)) {
             *REG_FFVM_AUDIO_IN_HEAD  = ringbuf_read(adev_buf, *REG_FFVM_AUDIO_IN_SIZE, *REG_FFVM_AUDIO_IN_HEAD, (uint8_t*)pcm, sizeof(pcm));
+            *REG_FFVM_AUDIO_IN_LOCK = 1;
             *REG_FFVM_AUDIO_IN_CURR -= sizeof(pcm);
+            *REG_FFVM_AUDIO_IN_LOCK = 0;
             flag = 1;
         } else {
             flag = 0;
         }
-        *REG_FFVM_AUDIO_IN_LOCK = 0;
 
         if (flag) {
             memset(disp_buf, 0, SCREEN_WIDTH * SCREEN_HEIGHT * sizeof(uint32_t));

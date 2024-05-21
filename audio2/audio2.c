@@ -98,15 +98,15 @@ static void* audio_in_proc(void *arg)
     while (*REG_FFVM_DISP_WH) {
         semaphore_wait(g_sem_irq_ai);
         do {
-            *REG_FFVM_AUDIO_IN_LOCK = 1;
             if (*REG_FFVM_AUDIO_IN_CURR >= sizeof(pcm)) {
                 *REG_FFVM_AUDIO_IN_HEAD  = ringbuf_read(adev_buf, *REG_FFVM_AUDIO_IN_SIZE, *REG_FFVM_AUDIO_IN_HEAD, (uint8_t*)pcm, sizeof(pcm));
+                *REG_FFVM_AUDIO_IN_LOCK  = 1;
                 *REG_FFVM_AUDIO_IN_CURR -= sizeof(pcm);
+                *REG_FFVM_AUDIO_IN_LOCK  = 0;
                 flag = 1;
             } else {
                 flag = 0;
             }
-            *REG_FFVM_AUDIO_IN_LOCK = 0;
 
             if (flag) {
                 memset(disp_buf, 0, SCREEN_WIDTH * SCREEN_HEIGHT * sizeof(uint32_t));
@@ -140,7 +140,7 @@ static void* audio_out_proc(void *arg)
     uint8_t *src_buf   = (uint8_t*)test_buf;
     int      src_len   = test_len;
     float    phase     = 0;
-    int      size, curr, tail, i;
+    int      i;
 
     for (i = start_idx; i <= stop_idx; i++) {
         phase = gen_sin_pcm_with_phase(ptr, AUDIO_CLIP_SIZE, AUDIO_SAMPLERATE, AUDIO_IDX_TO_FREQ(i), 32767 / 2, phase);
@@ -155,18 +155,15 @@ static void* audio_out_proc(void *arg)
 
     while (src_len > 0) {
         semaphore_wait(g_sem_irq_ao);
-        *REG_FFVM_AUDIO_OUT_LOCK = 1;
-        tail = *REG_FFVM_AUDIO_OUT_TAIL;
-        size = *REG_FFVM_AUDIO_OUT_SIZE;
-        curr = *REG_FFVM_AUDIO_OUT_CURR;
-        i = size - curr; i = i < src_len ? i : src_len;
+        i = *REG_FFVM_AUDIO_OUT_SIZE - *REG_FFVM_AUDIO_OUT_CURR;
+        i = i < src_len ? i : src_len;
         if (i > 0) {
-            tail  = ringbuf_write(adev_buf, size, tail, src_buf, i);
-            curr += i, src_len -= i, src_buf += i;
-            *REG_FFVM_AUDIO_OUT_TAIL = tail;
-            *REG_FFVM_AUDIO_OUT_CURR = curr;
+            *REG_FFVM_AUDIO_OUT_TAIL = ringbuf_write(adev_buf, *REG_FFVM_AUDIO_OUT_SIZE, *REG_FFVM_AUDIO_OUT_TAIL, src_buf, i);
+            *REG_FFVM_AUDIO_OUT_LOCK = 1;
+            *REG_FFVM_AUDIO_OUT_CURR+= i;
+            *REG_FFVM_AUDIO_OUT_LOCK = 0;
+            src_len -= i, src_buf += i;
         }
-        *REG_FFVM_AUDIO_OUT_LOCK = 0;
     }
 
     *REG_FFVM_IRQ_ENABLE    &= ~FLAG_FFVM_IRQ_AOUT;
