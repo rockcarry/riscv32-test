@@ -1,0 +1,10 @@
+prefix=/home/chenk/lwip/src/_install
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: liblwip
+Description: lwip tcp/ip network stack library
+Version: 2.0.3
+Libs: -L${libdir} -llwip
+Cflags: -I${includedir}
