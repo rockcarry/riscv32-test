@@ -15,6 +15,9 @@ typedef struct {
     void               *cbctx;
 } PHYDEV;
 
+#define ringbuf_size(head, tail, maxsize) (((tail) + (maxsize) - (head) - 0) % maxsize)
+#define ringbuf_free(head, tail, maxsize) (((head) + (maxsize) - (tail) - 1) % maxsize)
+
 static int ringbuf_read(uint8_t *rbuf, int maxsize, int head, uint8_t *dst, int len)
 {
     uint8_t *buf1 = rbuf    + head;
@@ -32,19 +35,16 @@ static void* ethphy_work_proc(void *arg)
 {
     PHYDEV  *phy = arg;
     uint8_t  buf[2048], *pkt;
-    uint32_t len;
+    uint32_t head, len;
     while (!(phy->flags & FLAG_EXIT)) {
         semaphore_wait(g_sem_irq_eth);
-        while (*REG_FFVM_ETHPHY_IN_CURR >= sizeof(uint32_t)) {
-            *REG_FFVM_ETHPHY_IN_HEAD = ringbuf_read(phy->buf, *REG_FFVM_ETHPHY_IN_SIZE, *REG_FFVM_ETHPHY_IN_HEAD, (uint8_t*)&len, sizeof(len));
-            if (*REG_FFVM_ETHPHY_IN_CURR >= sizeof(len) + len) {
+        while (ringbuf_size(*REG_FFVM_ETHPHY_IN_HEAD, *REG_FFVM_ETHPHY_IN_TAIL, *REG_FFVM_ETHPHY_IN_SIZE) >= sizeof(uint32_t)) {
+            head = ringbuf_read(phy->buf, *REG_FFVM_ETHPHY_IN_SIZE, *REG_FFVM_ETHPHY_IN_HEAD, (uint8_t*)&len, sizeof(len));
+            if (ringbuf_size(head, *REG_FFVM_ETHPHY_IN_TAIL, *REG_FFVM_ETHPHY_IN_SIZE) >= len) {
                 pkt = len < sizeof(buf) ? buf : NULL; // if pkt size too big, we should drop it
-                *REG_FFVM_ETHPHY_IN_HEAD  = ringbuf_read(phy->buf, *REG_FFVM_ETHPHY_IN_SIZE, *REG_FFVM_ETHPHY_IN_HEAD, pkt, len);
-                *REG_FFVM_ETHPHY_IN_LOCK  = 1;
-                *REG_FFVM_ETHPHY_IN_CURR -= sizeof(len) + len;
-                *REG_FFVM_ETHPHY_IN_LOCK  = 0;
+                *REG_FFVM_ETHPHY_IN_HEAD = ringbuf_read(phy->buf, *REG_FFVM_ETHPHY_IN_SIZE, head, pkt, len);
+                if (len <= sizeof(buf) && phy->callback) phy->callback(phy->cbctx, (char*)buf, len);
             }
-            if (len <= sizeof(buf) && phy->callback) phy->callback(phy->cbctx, (char*)buf, len);
         }
     }
     return NULL;

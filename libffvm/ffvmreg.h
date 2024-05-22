@@ -41,16 +41,12 @@
 #define REG_FFVM_AUDIO_OUT_HEAD   ((volatile uint32_t*)0xFF000308)
 #define REG_FFVM_AUDIO_OUT_TAIL   ((volatile uint32_t*)0xFF00030C)
 #define REG_FFVM_AUDIO_OUT_SIZE   ((volatile uint32_t*)0xFF000310)
-#define REG_FFVM_AUDIO_OUT_CURR   ((volatile uint32_t*)0xFF000314)
-#define REG_FFVM_AUDIO_OUT_LOCK   ((volatile uint32_t*)0xFF000318)
 
 #define REG_FFVM_AUDIO_IN_FMT     ((volatile uint32_t*)0xFF000320)
 #define REG_FFVM_AUDIO_IN_ADDR    ((volatile uint32_t*)0xFF000324)
 #define REG_FFVM_AUDIO_IN_HEAD    ((volatile uint32_t*)0xFF000328)
 #define REG_FFVM_AUDIO_IN_TAIL    ((volatile uint32_t*)0xFF00032C)
 #define REG_FFVM_AUDIO_IN_SIZE    ((volatile uint32_t*)0xFF000330)
-#define REG_FFVM_AUDIO_IN_CURR    ((volatile uint32_t*)0xFF000334)
-#define REG_FFVM_AUDIO_IN_LOCK    ((volatile uint32_t*)0xFF000338)
 
 #define REG_FFVM_MTIMECURL        ((volatile uint32_t*)0xFF000400)
 #define REG_FFVM_MTIMECURH        ((volatile uint32_t*)0xFF000404)
@@ -82,7 +78,5 @@
 #define REG_FFVM_ETHPHY_IN_HEAD   ((volatile uint32_t*)0xFF00070C)
 #define REG_FFVM_ETHPHY_IN_TAIL   ((volatile uint32_t*)0xFF000710)
 #define REG_FFVM_ETHPHY_IN_SIZE   ((volatile uint32_t*)0xFF000714)
-#define REG_FFVM_ETHPHY_IN_CURR   ((volatile uint32_t*)0xFF000718)
-#define REG_FFVM_ETHPHY_IN_LOCK   ((volatile uint32_t*)0xFF00071C)
 
 #endif

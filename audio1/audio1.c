@@ -22,6 +22,9 @@ float gen_sin_pcm_with_phase(int16_t *pcm, int n, int samprate, int freq, int am
     return phase + i * 2 * M_PI * freq / samprate;
 }
 
+#define ringbuf_size(head, tail, maxsize) (((tail) + (maxsize) - (head) - 0) % maxsize)
+#define ringbuf_free(head, tail, maxsize) (((head) + (maxsize) - (tail) - 1) % maxsize)
+
 static int ringbuf_write(uint8_t *rbuf, int maxsize, int tail, uint8_t *src, int len)
 {
     uint8_t *buf1 = rbuf    + tail;
@@ -87,7 +90,8 @@ int main(void)
     int16_t *test_buf  = malloc(test_len);
     int16_t *ptr       = test_buf;
     float    phase     = 0;
-    int      i;
+    int      lasty, cury, x, i;
+    int16_t  pcm[512];
 
     for (i = start_idx; i <= stop_idx; i++) {
         phase = gen_sin_pcm_with_phase(ptr, AUDIO_CLIP_SIZE, AUDIO_SAMPLERATE, AUDIO_IDX_TO_FREQ(i), 32767 / 2, phase);
@@ -102,13 +106,10 @@ int main(void)
     *REG_FFVM_AUDIO_OUT_SIZE =  AUDIO_ADEV_BUFSIZE;
     *REG_FFVM_AUDIO_OUT_FMT  = (AUDIO_SAMPLERATE << 0) | (1 << 24);
     while (src_len > 0) {
-        i = *REG_FFVM_AUDIO_OUT_SIZE - *REG_FFVM_AUDIO_OUT_CURR;
+        i = ringbuf_free(*REG_FFVM_AUDIO_OUT_HEAD, *REG_FFVM_AUDIO_OUT_TAIL, *REG_FFVM_AUDIO_OUT_SIZE);
         i = i < src_len ? i : src_len;
         if (i > 0) {
-            *REG_FFVM_AUDIO_OUT_TAIL  = ringbuf_write(adev_buf, *REG_FFVM_AUDIO_OUT_SIZE, *REG_FFVM_AUDIO_OUT_TAIL, src_buf, i);
-            *REG_FFVM_AUDIO_OUT_LOCK  = 1;
-            *REG_FFVM_AUDIO_OUT_CURR += i;
-            *REG_FFVM_AUDIO_OUT_LOCK  = 0;
+            *REG_FFVM_AUDIO_OUT_TAIL = ringbuf_write(adev_buf, *REG_FFVM_AUDIO_OUT_SIZE, *REG_FFVM_AUDIO_OUT_TAIL, src_buf, i);
             src_len -= i, src_buf += i;
         }
     }
@@ -124,20 +125,9 @@ int main(void)
     *REG_FFVM_AUDIO_IN_FMT  = (AUDIO_SAMPLERATE << 0) | (1 << 24);
 
     while (*REG_FFVM_DISP_WH) {
-        int lasty, cury, flag, x, i;
-        int16_t pcm[512];
+        if (ringbuf_size(*REG_FFVM_AUDIO_IN_HEAD, *REG_FFVM_AUDIO_IN_TAIL, *REG_FFVM_AUDIO_IN_SIZE) >= sizeof(pcm)) {
+            *REG_FFVM_AUDIO_IN_HEAD = ringbuf_read(adev_buf, *REG_FFVM_AUDIO_IN_SIZE, *REG_FFVM_AUDIO_IN_HEAD, (uint8_t*)pcm, sizeof(pcm));
 
-        if (*REG_FFVM_AUDIO_IN_CURR >= sizeof(pcm)) {
-            *REG_FFVM_AUDIO_IN_HEAD  = ringbuf_read(adev_buf, *REG_FFVM_AUDIO_IN_SIZE, *REG_FFVM_AUDIO_IN_HEAD, (uint8_t*)pcm, sizeof(pcm));
-            *REG_FFVM_AUDIO_IN_LOCK = 1;
-            *REG_FFVM_AUDIO_IN_CURR -= sizeof(pcm);
-            *REG_FFVM_AUDIO_IN_LOCK = 0;
-            flag = 1;
-        } else {
-            flag = 0;
-        }
-
-        if (flag) {
             memset(disp_buf, 0, SCREEN_WIDTH * SCREEN_HEIGHT * sizeof(uint32_t));
             lasty = SCREEN_HEIGHT / 2 - pcm[0] * SCREEN_HEIGHT / 0x10000;
             for (x = 1; x < SCREEN_WIDTH; x++) {
