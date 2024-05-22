@@ -3,7 +3,6 @@
 #include <string.h>
 #include <unistd.h>
 #include "ffvmreg.h"
-#include "libffvm.h"
 #include "fftask.h"
 
 static uint32_t s_old_mtvec    = 0;
