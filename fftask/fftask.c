@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <errno.h>
 #include "ffvmreg.h"
 #include "fftask.h"
 
@@ -520,7 +521,7 @@ int mutex_timedlock(KOBJECT *mutex, int32_t ms)
         s_running_task->taskctx->timeout = get_tick_count() + ms;
         s_insert(s_running_task); w_enqueue(mutex, s_running_task);
         task_switch_then_interrupt_on(task_schedule(NULL, 0));
-        return mutex->mutex.owner == s_running_task ? 0 : -1;
+        return mutex->mutex.owner == s_running_task ? 0 : ETIMEDOUT;
     } else {
         mutex->mutex.owner = s_running_task;
         interrupt_on();
@@ -564,7 +565,7 @@ int cond_timedwait(KOBJECT *cond, KOBJECT *mutex, int32_t ms)
     s_running_task->taskctx->timeout = get_tick_count() + ms;
     s_insert(s_running_task); w_enqueue(cond, s_running_task);
     task_switch_then_interrupt_on(task_schedule(mutex, 0));
-    return (s_running_task->flags & FFTASK_TASK_TIMEOUT) ? -1 : 0;
+    return (s_running_task->flags & FFTASK_TASK_TIMEOUT) ? ETIMEDOUT : 0;
 }
 
 int cond_signal(KOBJECT *cond, int broadcast)
@@ -628,7 +629,7 @@ int semaphore_timedwait(KOBJECT *sem, int32_t ms)
         s_running_task->taskctx->timeout = get_tick_count() + ms;
         s_insert(s_running_task); w_enqueue(sem, s_running_task);
         task_switch_then_interrupt_on(task_schedule(NULL, 0));
-        return (s_running_task->flags & FFTASK_TASK_TIMEOUT) ? -1 : 0;
+        return (s_running_task->flags & FFTASK_TASK_TIMEOUT) ? ETIMEDOUT : 0;
     } else {
         sem->sem.val--;
         interrupt_on();
