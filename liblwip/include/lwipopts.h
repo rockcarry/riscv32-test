@@ -29,7 +29,7 @@
 
 #define LWIP_STATS                  0
 #define LWIP_DEBUG                  0
-#define LWIP_PROVIDE_ERRNO          1
+#define LWIP_ERRNO_INCLUDE          <errno.h>
 
 #define MEMP_NUM_TCP_SEG            128
 #define TCP_SND_BUF                (16 * 1024)
