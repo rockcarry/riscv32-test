@@ -181,9 +181,7 @@ void _ATTRIBUTE ((__noreturn__)) _exit(int code)
     f_unmount("");
 #endif
 
-    (void) code;
-    __asm__("li x17, 93");
-    __asm__("ecall");
+    *REG_FFVM_CPU_FREQ = 0;
     while (1);
 }
 
