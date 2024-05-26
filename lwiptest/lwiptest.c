@@ -97,7 +97,9 @@ static char* get_content_type(char *file)
 
 static void get_file_range_size(char *file, int *start, int *end, int *size)
 {
-    FILE *fp = fopen(file, "rb");
+    char path[256];
+    snprintf(path, sizeof(path), "/disk/%s", file);
+    FILE *fp = fopen(path, "rb");
     if (fp) {
         fseek(fp, 0, SEEK_END);
         *size = ftell(fp);
@@ -112,7 +114,9 @@ static void get_file_range_size(char *file, int *start, int *end, int *size)
 
 static void send_file_data(SOCKET fd, char *file, int start, int end)
 {
-    FILE *fp = fopen(file, "rb");
+    char path[256];
+    snprintf(path, sizeof(path), "/disk/%s", file);
+    FILE *fp = fopen(path, "rb");
     if (fp) {
         char buf[1024];
         int  len = end - start + 1, ret = 0, n;
