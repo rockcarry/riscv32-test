@@ -8,7 +8,9 @@
 #include <sys/syslimits.h>
 #include <unistd.h>
 #include <fcntl.h>
+#if ENABLE_FATFS
 #include <fatfs.h>
+#endif
 #include "ffvmreg.h"
 
 static int stdin_getc(FILE *file)
@@ -233,10 +235,15 @@ int close(int fd) { return -1; }
 ssize_t read(int fd, void *buf, size_t nbyte) { return -1; }
 ssize_t write(int fd, const void *buf, size_t nbyte) { return -1; }
 off_t lseek(int fd, off_t offset, int whence) { return -1; }
-DIR *opendir(const char *path) { return NULL; }
-int closedir(DIR *dir) { return -1; }
-struct dirent* readdir(DIR *dir) { return NULL; }
-void rewinddir(DIR *dir) {}
+int unlink(const char *pathname) { return -1; }
+int rename(const char *oldname, const char *newname) { return -1; }
+int mkdir(const char *path, mode_t mode) { return -1; }
+int chdir(const char *path) { return -1; }
+char* getcwd(char *buf, size_t size) { return NULL; }
+void* opendir(const char *path) { return NULL; }
+int closedir(void *dir) { return -1; }
+struct dirent* readdir(void *dir) { return NULL; }
+void rewinddir(void *dir) {}
 #endif
 
 void _init(void)
