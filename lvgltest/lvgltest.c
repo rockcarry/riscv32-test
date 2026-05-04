@@ -8,9 +8,9 @@
 #include "fftask.h"
 #endif
 
-#define SCREEN_WIDTH        480
-#define SCREEN_HEIGHT       360
-#define SCREEN_REFRESH_DIV  0 // 0 - refresh trigger by disp_flush, >0 - refresh periodically, rate = 100 / SCREEN_REFRESH_DIV
+#define SCREEN_WIDTH        640
+#define SCREEN_HEIGHT       480
+#define SCREEN_REFRESH_DIV  4 // 0 - refresh trigger by disp_flush, >0 - refresh periodically, rate = 200 / SCREEN_REFRESH_DIV
 #define ENABLE_HW_BITBLT    1
 
 static void disp_flush(lv_disp_drv_t *disp_drv, const lv_area_t *area, lv_color_t *color_p)
@@ -28,9 +28,20 @@ static void disp_flush(lv_disp_drv_t *disp_drv, const lv_area_t *area, lv_color_
         color_p += n, pdst += SCREEN_WIDTH;
     }
 #endif
-#if (SCREEN_REFRESH_DIV == 0)
-    *REG_FFVM_DISP_REFRESH_WH = (SCREEN_WIDTH << 0) | (SCREEN_HEIGHT << 16);
-#endif
+    int x1 = (*REG_FFVM_DISP_REFRESH_XY >> 0 ) & 0xFFFF;
+    int y1 = (*REG_FFVM_DISP_REFRESH_XY >> 16) & 0xFFFF;
+    int dw = (*REG_FFVM_DISP_REFRESH_WH >> 0 ) & 0xFFFF;
+    int dh = (*REG_FFVM_DISP_REFRESH_WH >> 16) & 0xFFFF;
+    int x2 = x1 + dw - 1;
+    int y2 = y1 + dh - 1;
+    x1 = x1 < area->x1 ? x1 : area->x1;
+    y1 = y1 < area->y1 ? y1 : area->y1;
+    x2 = x2 > area->x2 ? x2 : area->x2;
+    y2 = y2 > area->y2 ? y2 : area->y2;
+    dw = x2 - x1 + 1;
+    dh = y2 - y1 + 1;
+    *REG_FFVM_DISP_REFRESH_XY = (x1 << 0) | (y1 << 16);
+    *REG_FFVM_DISP_REFRESH_WH = (dw << 0) | (dh << 16);
     lv_disp_flush_ready(disp_drv);
 }
 
@@ -67,10 +78,7 @@ int main(void)
     if (!disp_buf) { printf("failed to allocate display buffer !\n"); return 0; }
     *REG_FFVM_DISP_ADDR        = (uint32_t)disp_buf;
     *REG_FFVM_DISP_WH          = (SCREEN_WIDTH << 0) | (SCREEN_HEIGHT << 16);
-#if (SCREEN_REFRESH_DIV > 0)
-    *REG_FFVM_DISP_REFRESH_WH  = (SCREEN_WIDTH << 0) | (SCREEN_HEIGHT << 16);
     *REG_FFVM_DISP_REFRESH_DIV = SCREEN_REFRESH_DIV;
-#endif
 
     lv_disp_draw_buf_t disp_draw = {};
     lv_disp_drv_t      disp_drv  = {};
@@ -101,13 +109,14 @@ int main(void)
 
     lv_demo_widgets();
 
-    uint32_t tick_next = get_tick_count() + 20;
+    #define TIME_INC 5
+    uint32_t tick_next = get_tick_count() + TIME_INC;
     int32_t  tick_sleep;
     while (*REG_FFVM_DISP_WH) {
-        lv_tick_inc(20);
+        lv_tick_inc(TIME_INC);
         lv_timer_handler();
         tick_sleep = tick_next - get_tick_count();
-        tick_next += 20;
+        tick_next += TIME_INC;
         if (tick_sleep > 0) lvgl_sleep(tick_sleep);
     }
 
