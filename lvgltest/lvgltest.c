@@ -10,7 +10,7 @@
 
 #define SCREEN_WIDTH        640
 #define SCREEN_HEIGHT       480
-#define SCREEN_REFRESH_DIV  4 // 0 - refresh trigger by disp_flush, >0 - refresh periodically, rate = 200 / SCREEN_REFRESH_DIV
+#define SCREEN_REFRESH_DIV  4 // 0 - refresh trigger by disp_flush, >0 - refresh periodically, rate = 200 / (SCREEN_REFRESH_DIV + 1)
 #define ENABLE_HW_BITBLT    1
 
 static void disp_flush(lv_disp_drv_t *disp_drv, const lv_area_t *area, lv_color_t *color_p)

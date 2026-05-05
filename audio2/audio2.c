@@ -91,6 +91,9 @@ static void* audio_in_proc(void *arg)
 
     *REG_FFVM_DISP_ADDR = (uint32_t)disp_buf;
     *REG_FFVM_DISP_WH   = (SCREEN_WIDTH << 0) | (SCREEN_HEIGHT << 16);
+    *REG_FFVM_DISP_REFRESH_DIV = (1 << 16) | (4 << 0); // enable auto refresh, rate = 200 / (4 + 1) = 40Hz
+    *REG_FFVM_DISP_REFRESH_XY  = 0;
+    *REG_FFVM_DISP_REFRESH_WH  = (SCREEN_WIDTH << 0) | (SCREEN_HEIGHT << 16);
 
     uint8_t adev_buf[AUDIO_ADEV_BUFSIZE];
     *REG_FFVM_AUDIO_IN_ADDR = (uint32_t)adev_buf;
@@ -111,7 +114,6 @@ static void* audio_in_proc(void *arg)
                 line(disp_buf, x - 1, lasty, x, cury, 0x00FF00);
                 lasty = cury;
             }
-            *REG_FFVM_DISP_REFRESH_WH = (SCREEN_WIDTH << 0) | (SCREEN_HEIGHT << 16);
             task_sleep(20);
         }
     }

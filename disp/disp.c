@@ -12,10 +12,11 @@ int main(void)
     int       i, j;
     if (!disp_buf) { printf("failed to allocate display buffer !\n"); return 0; }
     printf("disp_buf: %p\n", disp_buf);
-    *REG_FFVM_DISP_ADDR       = (uint32_t)disp_buf;
-    *REG_FFVM_DISP_WH         = (disp_w << 0) | (disp_h << 16);
-    *REG_FFVM_DISP_REFRESH_WH = (disp_w << 0) | (disp_h << 16);
-    *REG_FFVM_DISP_REFRESH_DIV= 4;
+    *REG_FFVM_DISP_ADDR        = (uint32_t)disp_buf;
+    *REG_FFVM_DISP_WH          = (disp_w << 0) | (disp_h << 16);
+    *REG_FFVM_DISP_REFRESH_DIV = (1 << 16) | (4 << 0); // enable auto refresh, rate = 200 / (4 + 1) = 40Hz
+    *REG_FFVM_DISP_REFRESH_XY  = 0;
+    *REG_FFVM_DISP_REFRESH_WH =  (disp_w << 0) | (disp_h << 16);
     for (i = 0; i < disp_h; i++) {
         for (j = 0; j < disp_w; j++) {
             disp_buf[i * disp_w + j] = (i << 16) | (j << 8) | (i << 0);

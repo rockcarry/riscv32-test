@@ -28,6 +28,9 @@ int main(void)
     uint32_t *disp_buf  = malloc(SCREEN_WIDTH * SCREEN_HEIGHT * sizeof(uint32_t));
     *REG_FFVM_DISP_ADDR = (uint32_t)disp_buf;
     *REG_FFVM_DISP_WH   = (SCREEN_WIDTH << 0) | (SCREEN_HEIGHT << 16);
+    *REG_FFVM_DISP_REFRESH_DIV = (1 << 16) | (4 << 0); // enable auto refresh, rate = 200 / (4 + 1) = 40Hz
+    *REG_FFVM_DISP_REFRESH_XY  = 0;
+    *REG_FFVM_DISP_REFRESH_WH  = (SCREEN_WIDTH << 0) | (SCREEN_HEIGHT << 16);
     int lastmx = -1, lastmy = -1, curmx, curmy, mbtn, color;
     int lastox = SCREEN_WIDTH / 2, lastoy = SCREEN_HEIGHT / 2, curox = lastox, curoy = lastoy;
 
@@ -50,8 +53,6 @@ int main(void)
         bar(disp_buf, lastmx, lastmy, 10, 0);
         bar(disp_buf, curmx, curmy, 10, color);
         lastmx = curmx, lastmy = curmy;
-
-        *REG_FFVM_DISP_REFRESH_WH = (SCREEN_WIDTH << 0) | (SCREEN_HEIGHT << 16);
         mdelay(30);
     }
 

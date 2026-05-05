@@ -117,12 +117,15 @@ int main(void)
     *REG_FFVM_AUDIO_OUT_FMT  = 0;
 
     uint32_t *disp_buf = malloc(SCREEN_WIDTH * SCREEN_HEIGHT * sizeof(uint32_t));
-    *REG_FFVM_DISP_ADDR     = (uint32_t)disp_buf;
-    *REG_FFVM_DISP_WH       = (SCREEN_WIDTH << 0) | (SCREEN_HEIGHT << 16);
+    *REG_FFVM_DISP_ADDR        = (uint32_t)disp_buf;
+    *REG_FFVM_DISP_WH          = (SCREEN_WIDTH << 0) | (SCREEN_HEIGHT << 16);
+    *REG_FFVM_DISP_REFRESH_DIV = (1 << 16) | (4 << 0); // enable auto refresh, rate = 200 / (4 + 1) = 40Hz
+    *REG_FFVM_DISP_REFRESH_XY  = 0;
+    *REG_FFVM_DISP_REFRESH_WH  = (SCREEN_WIDTH << 0) | (SCREEN_HEIGHT << 16);
 
-    *REG_FFVM_AUDIO_IN_ADDR = (uint32_t)adev_buf;
-    *REG_FFVM_AUDIO_IN_SIZE =  AUDIO_ADEV_BUFSIZE;
-    *REG_FFVM_AUDIO_IN_FMT  = (AUDIO_SAMPLERATE << 0) | (1 << 24);
+    *REG_FFVM_AUDIO_IN_ADDR    = (uint32_t)adev_buf;
+    *REG_FFVM_AUDIO_IN_SIZE    =  AUDIO_ADEV_BUFSIZE;
+    *REG_FFVM_AUDIO_IN_FMT     = (AUDIO_SAMPLERATE << 0) | (1 << 24);
 
     while (*REG_FFVM_DISP_WH) {
         if (ringbuf_size(*REG_FFVM_AUDIO_IN_HEAD, *REG_FFVM_AUDIO_IN_TAIL, *REG_FFVM_AUDIO_IN_SIZE) >= sizeof(pcm)) {
@@ -136,7 +139,6 @@ int main(void)
                 line(disp_buf, x - 1, lasty, x, cury, 0x00FF00);
                 lasty = cury;
             }
-            *REG_FFVM_DISP_REFRESH_WH = (SCREEN_WIDTH << 0) | (SCREEN_HEIGHT << 16);
         }
     }
 
