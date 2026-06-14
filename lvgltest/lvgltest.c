@@ -8,8 +8,8 @@
 #include "fftask.h"
 #endif
 
-#define SCREEN_WIDTH        640
-#define SCREEN_HEIGHT       480
+#define SCREEN_WIDTH        800
+#define SCREEN_HEIGHT       600
 #define SCREEN_REFRESH_DIV  4 // 0 - refresh trigger by disp_flush, >0 - refresh periodically, rate = 200 / (SCREEN_REFRESH_DIV + 1)
 #define ENABLE_HW_BITBLT    1
 
@@ -74,7 +74,7 @@ int main(void)
     task_kernel_init();
 #endif
 
-    uint32_t *disp_buf = malloc(SCREEN_WIDTH * SCREEN_HEIGHT * sizeof(uint32_t) + 2 * SCREEN_WIDTH * SCREEN_HEIGHT / 2 * sizeof(lv_color_t));
+    uint32_t *disp_buf = malloc(SCREEN_WIDTH * SCREEN_HEIGHT * sizeof(uint32_t) + 2 * SCREEN_WIDTH * SCREEN_HEIGHT * sizeof(lv_color_t));
     if (!disp_buf) { printf("failed to allocate display buffer !\n"); return 0; }
     *REG_FFVM_DISP_ADDR        = (uint32_t)disp_buf;
     *REG_FFVM_DISP_WH          = (SCREEN_WIDTH << 0) | (SCREEN_HEIGHT << 16);
@@ -88,8 +88,8 @@ int main(void)
 
     lv_init();
     lv_color_t *buf1 = (lv_color_t*)(disp_buf + SCREEN_WIDTH * SCREEN_HEIGHT);
-    lv_color_t *buf2 = buf1 + SCREEN_WIDTH * SCREEN_HEIGHT / 2;
-    lv_disp_draw_buf_init(&disp_draw, buf1, buf2, SCREEN_WIDTH * SCREEN_HEIGHT / 2);
+    lv_color_t *buf2 = buf1 + SCREEN_WIDTH * SCREEN_HEIGHT;
+    lv_disp_draw_buf_init(&disp_draw, buf1, buf2, SCREEN_WIDTH * SCREEN_HEIGHT);
     lv_disp_drv_init(&disp_drv);
 
     disp_drv.hor_res   = SCREEN_WIDTH;
