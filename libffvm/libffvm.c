@@ -6,6 +6,7 @@
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/syslimits.h>
+#include <time.h>
 #include <unistd.h>
 #include <fcntl.h>
 #if ENABLE_FATFS
@@ -253,7 +254,7 @@ void _init(void)
 #endif
 }
 
-void _ATTRIBUTE ((__noreturn__)) _exit(int code)
+void __attribute__((__noreturn__)) _exit(int code)
 {
 #if ENABLE_FATFS
     f_unmount("");

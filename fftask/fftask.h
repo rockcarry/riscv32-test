@@ -12,6 +12,11 @@ typedef struct {
     uint32_t s2, s3, s4, s5, s6, s7, s8, s9, s10, s11;
     uint32_t t3, t4, t5, t6;
 
+    /* float registers f0-f31 (RV32F only, 32×8 = 256 bytes) */
+#if __riscv_flen >= 32
+    uint64_t f[32];
+#endif
+
     uint32_t timeout, exitcode;
     void*  (*taskproc)(void*);
     void    *taskarg;

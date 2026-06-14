@@ -1,9 +1,11 @@
+include ../config.mk
+
 CROSS_COMPILE ?= riscv32-picolibc-elf-
 GCC           ?= $(CROSS_COMPILE)gcc
 GXX           ?= $(CROSS_COMPILE)g++
 OBJCOPY       ?= $(CROSS_COMPILE)objcopy
 
-C_FLAGS := -Wall -Os -ffunction-sections -fdata-sections -I$(shell pwd)/../fatfs -DENABLE_FATFS
+C_FLAGS := -Wall -Os -ffunction-sections -fdata-sections $(ARCH_FLAGS) $(FATFS_DEF) $(FATFS_INC)
 
 PROGS = libffvm.a
 

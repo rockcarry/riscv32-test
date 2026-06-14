@@ -1,19 +1,21 @@
+include ../config.mk
+
 CROSS_COMPILE ?= riscv32-picolibc-elf-
 GCC           ?= $(CROSS_COMPILE)gcc
 GXX           ?= $(CROSS_COMPILE)g++
 OBJCOPY       ?= $(CROSS_COMPILE)objcopy
 
-LIBFFVM_TOP  = $(shell pwd)/../libffvm
-LIBFATFS_TOP = $(shell pwd)/../fatfs
-LIBFFTASK_TOP= $(shell pwd)/../fftask
+LIBFFVM_TOP  = $(TOP)/libffvm
 LIBETHPHY_TOP= $(shell pwd)/../ethphy
 LIBLWIP_TOP  = $(shell pwd)/../liblwip
 
-C_FLAGS := -Wall -Os -g -I$(LIBFFVM_TOP) -I$(LIBFFTASK_TOP) -I$(LIBETHPHY_TOP) -I$(LIBLWIP_TOP)/include
+C_FLAGS := -Wall -Os -g $(ARCH_FLAGS) -I$(LIBFFVM_TOP) $(FFTASK_INC) -I$(LIBETHPHY_TOP) -I$(LIBLWIP_TOP)/include
 LDFLAGS := --specs=picolibc.specs --crt0=hosted -T$(LIBFFVM_TOP)/ffvm.ld
-LDFLAGS += -L$(LIBFFVM_TOP)/lib -L$(LIBFATFS_TOP)/lib -L$(LIBFFTASK_TOP)/lib -L$(LIBETHPHY_TOP)/lib -L$(LIBLWIP_TOP)/lib
-LDFLAGS += -Wl,--gc-sections,--start-group
-LDFLAGS += --oslib=ffvm -lfatfs -lfftask -lethphy -llwip
+LDFLAGS += -L$(LIBFFVM_TOP)/lib $(FATFS_LDIR) $(FFTASK_LDIR) -L$(LIBETHPHY_TOP)/lib -L$(LIBLWIP_TOP)/lib
+LDFLAGS += -Wl,--gc-sections
+LDFLAGS += --oslib=ffvm
+LDFLAGS += $(FATFS_LIBS)
+LDFLAGS +=  $(FFTASK_LIB) -llwip -lethphy 
 
 PROGS = lwiptest.elf
 PROMS = lwiptest.rom

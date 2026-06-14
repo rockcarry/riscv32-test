@@ -30,6 +30,25 @@
     sw t4 , 116(\base)
     sw t5 , 120(\base)
     sw t6 , 124(\base)
+    /* float registers f0-f31 at offset 128 (32*4=128 bytes after int regs) */
+#if __riscv_flen >= 32
+    fsw f0  , 128(\base); fsw f1  , 132(\base)
+    fsw f2  , 136(\base); fsw f3  , 140(\base)
+    fsw f4  , 144(\base); fsw f5  , 148(\base)
+    fsw f6  , 152(\base); fsw f7  , 156(\base)
+    fsw f8  , 160(\base); fsw f9  , 164(\base)
+    fsw f10 , 168(\base); fsw f11 , 172(\base)
+    fsw f12 , 176(\base); fsw f13 , 180(\base)
+    fsw f14 , 184(\base); fsw f15 , 188(\base)
+    fsw f16 , 192(\base); fsw f17 , 196(\base)
+    fsw f18 , 200(\base); fsw f19 , 204(\base)
+    fsw f20 , 208(\base); fsw f21 , 212(\base)
+    fsw f22 , 216(\base); fsw f23 , 220(\base)
+    fsw f24 , 224(\base); fsw f25 , 228(\base)
+    fsw f26 , 232(\base); fsw f27 , 236(\base)
+    fsw f28 , 240(\base); fsw f29 , 244(\base)
+    fsw f30 , 248(\base); fsw f31 , 252(\base)
+#endif
 .endm
 
 .macro load_context base
@@ -64,6 +83,25 @@
     lw t4 , 116(\base)
     lw t5 , 120(\base)
     lw t6 , 124(\base)
+    /* float registers f0-f31 at offset 128 */
+#if __riscv_flen >= 32
+    flw f0  , 128(\base); flw f1  , 132(\base)
+    flw f2  , 136(\base); flw f3  , 140(\base)
+    flw f4  , 144(\base); flw f5  , 148(\base)
+    flw f6  , 152(\base); flw f7  , 156(\base)
+    flw f8  , 160(\base); flw f9  , 164(\base)
+    flw f10 , 168(\base); flw f11 , 172(\base)
+    flw f12 , 176(\base); flw f13 , 180(\base)
+    flw f14 , 184(\base); flw f15 , 188(\base)
+    flw f16 , 192(\base); flw f17 , 196(\base)
+    flw f18 , 200(\base); flw f19 , 204(\base)
+    flw f20 , 208(\base); flw f21 , 212(\base)
+    flw f22 , 216(\base); flw f23 , 220(\base)
+    flw f24 , 224(\base); flw f25 , 228(\base)
+    flw f26 , 232(\base); flw f27 , 236(\base)
+    flw f28 , 240(\base); flw f29 , 244(\base)
+    flw f30 , 248(\base); flw f31 , 252(\base)
+#endif
 .endm
 
 .global task_switch_then_interrupt_on

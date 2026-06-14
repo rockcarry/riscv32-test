@@ -1,18 +1,20 @@
+include ../config.mk
+
 CROSS_COMPILE ?= riscv32-picolibc-elf-
 GCC           ?= $(CROSS_COMPILE)gcc
 GXX           ?= $(CROSS_COMPILE)g++
 OBJCOPY       ?= $(CROSS_COMPILE)objcopy
 
-LIBFFVM_TOP  = $(shell pwd)/../libffvm
-LIBFATFS_TOP = $(shell pwd)/../fatfs
-LIBFFTASK_TOP= $(shell pwd)/../fftask
-LIBLVGL_TOP  = $(shell pwd)/../liblvgl
+LIBFFVM_TOP  = $(TOP)/libffvm
+LIBLVGL_TOP  = $(TOP)/liblvgl
 
-C_FLAGS := -Wall -Os -g -I$(LIBFFVM_TOP) -I$(LIBFFTASK_TOP) -I$(LIBLVGL_TOP)/include -DWITH_FFTASK
+C_FLAGS := -Wall -Os -g $(ARCH_FLAGS) -I$(LIBFFVM_TOP) $(FFTASK_INC) -I$(LIBLVGL_TOP)/include $(FFTASK_DEF)
 LDFLAGS := --specs=picolibc.specs --crt0=hosted -T$(LIBFFVM_TOP)/ffvm.ld
-LDFLAGS += -L$(LIBFFVM_TOP)/lib -L$(LIBFATFS_TOP)/lib -L$(LIBFFTASK_TOP)/lib -L$(LIBLVGL_TOP)/lib
-LDFLAGS += -Wl,--gc-sections,--start-group
-LDFLAGS += --oslib=ffvm -lfatfs -lfftask -llvgl_demos -llvgl
+LDFLAGS += -L$(LIBFFVM_TOP)/lib $(FATFS_LDIR) $(FFTASK_LDIR) -L$(LIBLVGL_TOP)/lib
+LDFLAGS += -Wl,--gc-sections
+LDFLAGS += $(FATFS_LIBS)
+LDFLAGS += -Wl,--start-group $(FFTASK_LIB) -llvgl_demos -llvgl -Wl,--end-group
+LDFLAGS += --oslib=ffvm
 
 PROGS = lvgltest.elf
 PROMS = lvgltest.rom
